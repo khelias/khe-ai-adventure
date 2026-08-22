@@ -89,7 +89,7 @@ const response = await fetch(endpoint, {
   body: payload,
 })
 const rawText = await response.text()
-let parsed: { provider?: string; model?: string; data?: { stories?: Story[] }; error?: string } | null = null
+let parsed: { provider?: string; model?: string; data?: { stories?: Story[] }; error?: string } | null
 try {
   parsed = rawText ? parseProxySmokeResponse(JSON.parse(rawText) as unknown) : null
 } catch {
