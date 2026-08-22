@@ -31,6 +31,14 @@
       "automerge": true
     },
     {
+      "description": "Automerge 0.x patch updates, devDependencies only. The two rules above require >= 1.0.0, which silently excluded every pre-1.0 package and left green PRs sitting open for weeks. Pre-1.0 patch bumps can still break, so runtime dependencies stay manual; dev tooling that breaks fails loudly in CI.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "< 1.0.0",
+      "automerge": true
+    },
+    {
       "description": "Automerge GitHub Actions non-major updates",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch"],
