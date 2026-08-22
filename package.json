@@ -27,6 +27,7 @@
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@typescript/native": "npm:typescript@~7.0.2",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -34,7 +35,7 @@
     "globals": "^17.4.0",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
-    "typescript": "~6.0.2",
+    "typescript": "npm:@typescript/typescript6@~6.0.2",
     "typescript-eslint": "^8.58.0",
     "vite": "^8.0.4"
   }
