@@ -455,11 +455,13 @@ app.post('/generate', async (req, res) => {
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
     if (err.name === 'AbortError') {
-      console.error(`proxy (${provider}): upstream timeout`);
+      console.error('proxy: upstream timeout', { provider });
       return res.status(504).json({ error: 'Upstream timeout' });
     }
     const status = err.status || 500;
-    console.error(`proxy (${provider}):`, status, err.message || err);
+    // provider is already constrained to claude|gemini above, but keeping
+    // request values out of the format-string position removes the question.
+    console.error('proxy: error', { provider, status, message: err.message || String(err) });
     res.status(status).json(err.publicBody || { error: err.message || 'Proxy error' });
   }
 });
