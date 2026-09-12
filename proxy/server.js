@@ -10,6 +10,31 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 const DEFAULT_PROVIDER = process.env.DEFAULT_PROVIDER || 'gemini';
 const PORT = Number(process.env.PORT) || 3000;
+
+// A request may name a model so a playtest can compare candidates without
+// reconfiguring the container between runs. The value is client-supplied, so
+// it is matched against an exact allowlist rather than passed upstream: an
+// unchecked model name lets anyone spend this proxy's API keys on the most
+// expensive model the provider sells. Add a candidate here to make it
+// testable; the configured default is always allowed.
+const MODEL_ALLOWLIST = {
+  gemini: ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'],
+  claude: ['claude-sonnet-5', 'claude-sonnet-4-6'],
+};
+
+function resolveModel(provider, requested) {
+  const configured = provider === 'claude' ? CLAUDE_MODEL : GEMINI_MODEL;
+  if (!requested) return configured;
+  const allowed = [...new Set([configured, ...(MODEL_ALLOWLIST[provider] || [])])];
+  if (!allowed.includes(requested)) {
+    const err = new Error(`model is not in the allowlist for ${provider}`);
+    err.status = 400;
+    err.publicBody = { error: `model is not in the allowlist for ${provider}`, allowed };
+    throw err;
+  }
+  return requested;
+}
+
 const UPSTREAM_TIMEOUT_MS = 115_000; // slightly under nginx proxy_read_timeout (120s)
 const APPROX_CHARS_PER_TOKEN = 4;
 const HOUR_MS = 60 * 60 * 1000;
@@ -289,7 +314,7 @@ app.post('/generate', async (req, res) => {
       return res.status(401).json({ error: 'Invalid signature' });
     }
   }
-  const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt, language } = req.body || {};
+  const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt, language, model } = req.body || {};
   if (typeof prompt !== 'string' || !prompt.trim() || typeof schema !== 'object' || !schema) {
     return res.status(400).json({ error: 'prompt (string) and schema (object) are required' });
   }
@@ -311,6 +336,15 @@ app.post('/generate', async (req, res) => {
   if (provider !== 'claude' && provider !== 'gemini') {
     return res.status(400).json({ error: `unknown provider: ${provider}` });
   }
+  if (typeof model !== 'undefined' && typeof model !== 'string') {
+    return res.status(400).json({ error: 'model must be a string when provided' });
+  }
+  let effectiveModel;
+  try {
+    effectiveModel = resolveModel(provider, model);
+  } catch (err) {
+    return res.status(err.status || 400).json(err.publicBody || { error: err.message });
+  }
   const t0 = Date.now();
   try {
     // Estonian grammar is handled by the Gemini editor pass (corrective),
@@ -330,8 +364,8 @@ app.post('/generate', async (req, res) => {
       const reservation = reserveClientBudget(req, budget.received.approxTokens);
       const fullPrompt = prompt + extraPrompt;
       const result = provider === 'claude'
-        ? await callClaude({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt })
-        : await callGemini({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt });
+        ? await callClaude({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel })
+        : await callGemini({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel });
       adjustClientBudget(reservation, tokenCountFromUsage(result.tokens));
       return result;
     };
@@ -706,14 +740,15 @@ function normalizeSchemaForClaude(node) {
   return node;
 }
 
-async function callClaude({ prompt, schema, systemPrompt }) {
+async function callClaude({ prompt, schema, systemPrompt, model }) {
+  const claudeModel = model || CLAUDE_MODEL;
   if (!anthropic) {
     const err = new Error('Claude not configured on this proxy');
     err.status = 503;
     throw err;
   }
   const createParams = {
-    model: CLAUDE_MODEL,
+    model: claudeModel,
     max_tokens: 2000,
     tools: [
       {
@@ -736,10 +771,11 @@ async function callClaude({ prompt, schema, systemPrompt }) {
   }
   const usage = message.usage;
   const cacheHit = usage?.cache_read_input_tokens > 0 ? `${usage.cache_read_input_tokens}tok` : 'miss';
-  return { model: CLAUDE_MODEL, data: toolUse.input, cacheHit, tokens: { in: usage?.input_tokens || 0, out: usage?.output_tokens || 0 } };
+  return { model: claudeModel, data: toolUse.input, cacheHit, tokens: { in: usage?.input_tokens || 0, out: usage?.output_tokens || 0 } };
 }
 
-async function callGemini({ prompt, schema, systemPrompt }) {
+async function callGemini({ prompt, schema, systemPrompt, model }) {
+  const geminiModel = model || GEMINI_MODEL;
   if (!GEMINI_API_KEY) {
     const err = new Error('Gemini not configured on this proxy');
     err.status = 503;
@@ -757,7 +793,7 @@ async function callGemini({ prompt, schema, systemPrompt }) {
       },
     };
     if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
-    const upstream = await fetch(geminiUrl(GEMINI_MODEL), {
+    const upstream = await fetch(geminiUrl(geminiModel), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(geminiBody),
@@ -776,7 +812,7 @@ async function callGemini({ prompt, schema, systemPrompt }) {
     const usageMetadata = body?.usageMetadata || {};
     const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
     return {
-      model: GEMINI_MODEL,
+      model: geminiModel,
       data: JSON.parse(text),
       cacheHit: cachedTokens > 0 ? `${cachedTokens}tok` : null,
       tokens: {

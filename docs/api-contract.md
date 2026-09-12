@@ -12,6 +12,7 @@ adventure proxy. The frontend never calls provider APIs directly.
   prompt: string
   schema: JsonSchema
   provider?: 'gemini' | 'claude'
+  model?: string
   systemPrompt?: string
   language?: 'et' | 'en'
 }
@@ -21,6 +22,11 @@ adventure proxy. The frontend never calls provider APIs directly.
 - `schema`: one of the canonical schemas exported from
   `src/game/prompts/schemas.ts`.
 - `provider`: defaults to `gemini`; `claude` is an opt-in quality mode.
+- `model`: optional override of the provider's configured model, for
+  side-by-side playtests. Checked against `MODEL_ALLOWLIST` in
+  `proxy/server.js`; anything else is a 400 listing the allowed values. The
+  configured default (`GEMINI_MODEL` / `CLAUDE_MODEL`) is always allowed.
+  The Estonian editor pass always runs on `GEMINI_MODEL` and ignores this.
 - `systemPrompt`: accepted only for `turnSchema` requests. It is used for turn
   prompts and Claude tool calls.
 - `language`: enables the Estonian editor pass when set to `et`.
@@ -38,8 +44,9 @@ The proxy currently applies these checks before provider calls:
 2. If `API_SECRET` is set, the HMAC signature must match.
 3. `schema` must match one of the exact canonical schema hashes below.
 4. `provider` must be `gemini` or `claude`.
-5. `prompt` and `systemPrompt` must fit the schema-specific input budget.
-6. The caller must fit the in-memory per-client request/token budget.
+5. `model`, when present, must be on the allowlist for that provider.
+6. `prompt` and `systemPrompt` must fit the schema-specific input budget.
+7. The caller must fit the in-memory per-client request/token budget.
 
 ## Input and usage budgets
 

@@ -54,6 +54,7 @@ const { values } = parseArgs({
     players: { type: 'string', default: '3' },
     language: { type: 'string', default: 'et' },
     provider: { type: 'string', default: 'gemini' },
+    model: { type: 'string', default: '' },
     strategy: { type: 'string', default: 'balanced' },
     endpoint: { type: 'string', default: 'https://games.khe.ee/adventure/api/generate' },
     location: { type: 'string', default: '' },
@@ -76,6 +77,8 @@ Usage: npx tsx scripts/playtest.ts [options]
   --players=<1..6>            Default: 3
   --language=<et|en>          Default: et
   --provider=<claude|gemini>  Default: gemini
+  --model=<id>                Override the provider's model for this run.
+                              Must be on the proxy's MODEL_ALLOWLIST.
   --strategy=<first|random|balanced|protect-threat>
                               Default: balanced  (see README)
   --endpoint=<url>            Default: https://games.khe.ee/adventure/api/generate
@@ -97,6 +100,7 @@ const duration = values.duration as Duration
 const players = Number(values.players)
 const language = values.language as Language
 const provider = values.provider as Provider
+const modelOverride = values.model ?? ''
 const strategy = values.strategy as StrategyName
 const endpoint = values.endpoint
 const skipParametricEnd = Boolean(values['skip-parametric-end'])
@@ -120,6 +124,7 @@ async function callAI<T>(
   systemPrompt?: string,
 ): Promise<{ data: T; model: string }> {
   const body: Record<string, unknown> = { prompt, schema, provider: providerArg, language }
+  if (modelOverride) body.model = modelOverride
   if (systemPrompt) body.systemPrompt = systemPrompt
   const payload = JSON.stringify(body)
   const headers: Record<string, string> = {
@@ -213,6 +218,7 @@ async function main() {
   log(`| Players | ${players} |`)
   log(`| Language | ${language} |`)
   log(`| Provider | ${provider} |`)
+  log(`| Model | ${modelOverride || '(proxy default)'} |`)
   log(`| Strategy | ${strategy} |`)
   log(`| Skip parametric end | ${skipParametricEnd} |`)
   log(`| Endpoint | ${endpoint} |`)
