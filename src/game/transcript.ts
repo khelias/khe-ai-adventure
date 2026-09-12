@@ -105,14 +105,13 @@ export function newTranscript(args: {
 // Re-persisting the same startedAt updates the existing entry, which lets us
 // safely save every turn without filling storage with duplicate partial games.
 // Older entries are dropped — this is a debug tool, not a save system.
-// Secrets stay private until reveal, and localStorage is the one place on a
-// pass-the-phone device where a curious player can read ahead. So they are
-// withheld from every write until the game has ended. The in-memory transcript
-// keeps them throughout, so the GameOver download is unaffected, and the
-// end-of-game write still carries the full set: evaluateAll only adds `result`
-// to each Secret, so the at-assignment archetype snapshot survives intact.
+// Secrets never reach localStorage. On a pass-the-phone device that is the one
+// place a curious player can read ahead, and nothing in the app reads them back
+// out: loadStoredTranscripts has no callers, and the GameOver download works
+// from the in-memory transcript, which keeps the full set. Storing them would
+// buy a devtools convenience at the cost of the one product invariant the
+// hidden-role mechanic rests on.
 function forStorage(transcript: GameTranscript): GameTranscript {
-  if (transcript.end) return transcript
   const copy = { ...transcript }
   delete copy.secrets
   return copy

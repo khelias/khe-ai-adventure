@@ -258,7 +258,7 @@ describe('transcript persistence', () => {
     })
   })
 
-  it('stores secrets once the game has ended', () => {
+  it('keeps secrets out of storage after the game has ended too', () => {
     withFakeStorage(() => {
       const ended = transcriptWithSecrets()
       ended.end = {
@@ -270,8 +270,9 @@ describe('transcript persistence', () => {
       }
       persistTranscript(ended)
       const [stored] = loadStoredTranscripts()
-      assert.equal(stored?.secrets?.length, 1)
-      assert.equal(stored?.secrets?.[0]?.archetype, 'traitor')
+      assert.equal(stored?.secrets, undefined)
+      // The rest of the transcript still persists — only secrets are dropped.
+      assert.equal(stored?.end?.kind, 'narrative')
     })
   })
 })
