@@ -105,13 +105,25 @@ export function newTranscript(args: {
 // Re-persisting the same startedAt updates the existing entry, which lets us
 // safely save every turn without filling storage with duplicate partial games.
 // Older entries are dropped — this is a debug tool, not a save system.
+// Secrets never reach localStorage. On a pass-the-phone device that is the one
+// place a curious player can read ahead, and nothing in the app reads them back
+// out: loadStoredTranscripts has no callers, and the GameOver download works
+// from the in-memory transcript, which keeps the full set. Storing them would
+// buy a devtools convenience at the cost of the one product invariant the
+// hidden-role mechanic rests on.
+function forStorage(transcript: GameTranscript): GameTranscript {
+  const copy = { ...transcript }
+  delete copy.secrets
+  return copy
+}
+
 export function persistTranscript(transcript: GameTranscript): void {
   if (typeof window === 'undefined') return
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     const list: GameTranscript[] = raw ? (JSON.parse(raw) as GameTranscript[]) : []
     const rest = list.filter((item) => item.startedAt !== transcript.startedAt)
-    const next = [transcript, ...rest].slice(0, STORAGE_LIMIT)
+    const next = [forStorage(transcript), ...rest].slice(0, STORAGE_LIMIT)
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   } catch {
     // localStorage write failures are non-fatal — the user can still download.
