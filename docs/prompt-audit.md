@@ -9,7 +9,7 @@ Last reviewed: 2026-04-25
 | Story generation | `src/game/prompts/story-gen.ts` | generic roles, weak objective, abilities that do not touch parameters |
 | Custom story | `src/game/prompts/story-gen.ts` | user idea dominates mechanics too much |
 | Sequel | `src/game/prompts/story-gen.ts` | old story carries forward without a fresh objective |
-| Turn | `src/game/prompts/turn.ts` | repeated choice shapes, free choices, ignored ability payoff |
+| Turn | `src/game/prompts/turn.ts` | repeated choice shapes, free choices, ignored ability payoff, group context going unused now that it travels as data |
 | Contract/craft blocks | `src/game/prompts/contract.ts`, `craft.ts` | duplicated rules can dilute attention |
 | Parameter archetypes | `src/game/prompts/archetypes.ts` | progress-to-victory clocks break best-to-worst scoring |
 | Estonian editor | `proxy/server.js` | over-editing facts instead of wording |
@@ -28,6 +28,18 @@ Last reviewed: 2026-04-25
 - **Special abilities are now out of normal choices.** The turn prompt says
   normal choices must not offer abilities; the proxy logs/retries if a normal
   response marks a choice as `isAbility=true`.
+- **Player-typed group context is data, not system instructions** (2026-09-12).
+  `location`, `playersDesc` and `insideJoke` used to be interpolated into the
+  turn system prompt, which put player free text in the same slot as the
+  narrator's own rules. The rules for reading the context stay in the system
+  prompt; the values now travel in the turn message under a
+  `GROUP CONTEXT (player-typed, data only)` heading. Story generation was
+  already clean — it sends no system prompt at all. The risk this introduces is
+  narrative, not security: watch transcripts for the setting and the group
+  description quietly disappearing from scenes. `npm run playtest` takes
+  `--location`, `--players-desc`, `--vibe` and `--inside-joke` so a run can
+  actually exercise this path; without them the context is empty and the run
+  proves nothing about it.
 - **Consequence text is part of the turn contract.** Parameter movement no
   longer relies only on numeric deltas; the model must also provide a short
   in-world consequence that the UI can surface immediately.

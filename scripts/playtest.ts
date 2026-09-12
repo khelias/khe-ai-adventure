@@ -56,6 +56,10 @@ const { values } = parseArgs({
     provider: { type: 'string', default: 'gemini' },
     strategy: { type: 'string', default: 'balanced' },
     endpoint: { type: 'string', default: 'https://games.khe.ee/adventure/api/generate' },
+    location: { type: 'string', default: '' },
+    'players-desc': { type: 'string', default: '' },
+    vibe: { type: 'string', default: '' },
+    'inside-joke': { type: 'string', default: '' },
     out: { type: 'string' },
     'skip-parametric-end': { type: 'boolean', default: false },
     help: { type: 'boolean', default: false, short: 'h' },
@@ -75,6 +79,10 @@ Usage: npx tsx scripts/playtest.ts [options]
   --strategy=<first|random|balanced|protect-threat>
                               Default: balanced  (see README)
   --endpoint=<url>            Default: https://games.khe.ee/adventure/api/generate
+  --location=<text>           Group context: physical setting. Default: empty
+  --players-desc=<text>       Group context: who is at the table. Default: empty
+  --vibe=<text>               Group context: tone steer. Default: empty
+  --inside-joke=<text>        Group context: easter egg. Default: empty
   --skip-parametric-end       Continue past engine's auto-end to see climax/resolution
   --out=<path>                Transcript output. Default: playtest-transcripts/<...>.md
   --help, -h                  Show this help
@@ -175,6 +183,16 @@ function log(line = '') {
   fs.appendFileSync(outPath, line + '\n')
 }
 
+function describeContext(ctx: ContextInput): string {
+  const parts = [
+    ctx.location ? `location="${ctx.location}"` : null,
+    ctx.playersDesc ? `playersDesc="${ctx.playersDesc}"` : null,
+    ctx.vibe ? `vibe="${ctx.vibe}"` : null,
+    ctx.insideJoke ? `insideJoke="${ctx.insideJoke}"` : null,
+  ].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : '(empty)'
+}
+
 function paramsLine(parameters: Parameter[]): string {
   return parameters
     .map((p) => `${p.name}=${p.currentStateIndex + 1}/4 "${p.states[p.currentStateIndex]}"`)
@@ -198,12 +216,18 @@ async function main() {
   log(`| Strategy | ${strategy} |`)
   log(`| Skip parametric end | ${skipParametricEnd} |`)
   log(`| Endpoint | ${endpoint} |`)
+  const ctx: ContextInput = {
+    location: values.location ?? '',
+    playersDesc: values['players-desc'] ?? '',
+    vibe: values.vibe ?? '',
+    insideJoke: values['inside-joke'] ?? '',
+  }
+  log(`| Group context | ${describeContext(ctx)} |`)
   log('')
 
   // ---- Story generation ----
   log(`## Story generation`)
   log('')
-  const ctx: ContextInput = { location: '', playersDesc: '', vibe: '', insideJoke: '' }
   const t0 = Date.now()
   const storyPrompt = storyGenerationPrompt({ players, genre, duration, language, context: ctx })
   const storyResp = await callAI<{ stories: Story[] }>(storyPrompt, storyGenerationSchema, provider)
