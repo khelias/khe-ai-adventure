@@ -62,6 +62,14 @@ tests/         ui-smoke.spec.ts, unit/game.test.ts
    counter behind cloudflared's socket.
 5. **HMAC secrets** must match between frontend (`VITE_API_SECRET`) and proxy
    (`API_SECRET`). Smoke tests fetch from `services/apps/games/.env` on VM.
+6. **Rate and token budgets are security controls**, not only cost controls.
+   `PROXY_MAX_*` bounds the abuse ceiling of the client-supplied system prompt
+   ([ADR 0006](docs/decisions/0006-client-supplied-system-prompt.md)); raising
+   them widens it.
+
+CodeQL is not a required check here, and one alert
+(`js/system-prompt-injection`, `proxy/server.js`) is knowingly left open per
+ADR 0006. A *second* alert is the signal worth acting on.
 
 ## Product invariants (from ROADMAP)
 
