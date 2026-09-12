@@ -21,6 +21,12 @@ import {
   turnPrompt,
   turnSchema,
 } from '../../src/game/prompts'
+import {
+  loadStoredTranscripts,
+  newTranscript,
+  persistTranscript,
+} from '../../src/game/transcript'
+import type { GameTranscript } from '../../src/game/transcript'
 import type { Parameter, Role, Secret } from '../../src/game/types'
 
 function parameter(
@@ -204,5 +210,68 @@ describe('prompt and schema contracts', () => {
     assert.match(user, /spent \*\*Role 0\*\*'s one-time special ability/)
     assert.match(user, /Leading actor: roleIndex 0/)
     assert.match(user, /Specific target: roleIndex 1/)
+  })
+})
+
+describe('transcript persistence', () => {
+  function withFakeStorage(run: () => void): void {
+    const store = new Map<string, string>()
+    const original = (globalThis as { window?: unknown }).window
+    ;(globalThis as { window?: unknown }).window = {
+      localStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+      },
+    }
+    try {
+      run()
+    } finally {
+      ;(globalThis as { window?: unknown }).window = original
+    }
+  }
+
+  function transcriptWithSecrets(): GameTranscript {
+    const t = newTranscript({
+      startedAt: '2026-01-01T00:00:00.000Z',
+      setup: {
+        players: 3,
+        genre: 'Thriller',
+        duration: 'Short',
+        language: 'et',
+        provider: 'gemini',
+        context: { location: '', playersDesc: '', vibe: '', insideJoke: '' },
+        maxTurns: 8,
+      },
+      story: { title: 'T', summary: 'S', parametersAtStart: [], rolesAtStart: [] },
+    })
+    t.secrets = [{ ownerRoleId: 0, archetype: 'traitor' }]
+    return t
+  }
+
+  it('withholds secrets from storage while the game is running', () => {
+    withFakeStorage(() => {
+      persistTranscript(transcriptWithSecrets())
+      const [stored] = loadStoredTranscripts()
+      assert.ok(stored, 'transcript was stored')
+      assert.equal(stored.secrets, undefined)
+      assert.equal(stored.startedAt, '2026-01-01T00:00:00.000Z')
+    })
+  })
+
+  it('stores secrets once the game has ended', () => {
+    withFakeStorage(() => {
+      const ended = transcriptWithSecrets()
+      ended.end = {
+        kind: 'narrative',
+        title: 'End',
+        text: 'Done',
+        finalParameters: [],
+        finalRoles: [],
+      }
+      persistTranscript(ended)
+      const [stored] = loadStoredTranscripts()
+      assert.equal(stored?.secrets?.length, 1)
+      assert.equal(stored?.secrets?.[0]?.archetype, 'traitor')
+    })
   })
 })
