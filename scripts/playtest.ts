@@ -43,6 +43,7 @@ import type {
   Provider,
   Role,
   Story,
+  Vibe,
 } from '../src/game/types'
 
 // ---------- CLI ----------
@@ -155,15 +156,15 @@ async function callAI<T>(
 
 function pickChoice(choices: Choice[], parameters: Parameter[], strat: StrategyName): Choice {
   if (choices.length === 0) throw new Error('No choices to pick from')
-  if (strat === 'first') return choices[0]
-  if (strat === 'random') return choices[Math.floor(Math.random() * choices.length)]
+  if (strat === 'first') return choices[0]!
+  if (strat === 'random') return choices[Math.floor(Math.random() * choices.length)]!
   if (strat === 'protect-threat') {
     // Heuristic: THREAT is generated last in story gen. Rank by most +change on it.
-    const threatName = parameters[parameters.length - 1].name
-    return [...choices].sort((a, b) => threatChange(b, threatName) - threatChange(a, threatName))[0]
+    const threatName = parameters[parameters.length - 1]!.name
+    return [...choices].sort((a, b) => threatChange(b, threatName) - threatChange(a, threatName))[0]!
   }
   // balanced: score by change × criticality weight (closer to worst = weightier)
-  return [...choices].sort((a, b) => scoreChoice(b, parameters) - scoreChoice(a, parameters))[0]
+  return [...choices].sort((a, b) => scoreChoice(b, parameters) - scoreChoice(a, parameters))[0]!
 }
 
 function threatChange(c: Choice, name: string): number {
@@ -225,7 +226,7 @@ async function main() {
   const ctx: ContextInput = {
     location: values.location ?? '',
     playersDesc: values['players-desc'] ?? '',
-    vibe: values.vibe ?? '',
+    vibe: (values.vibe ?? '') as Vibe,
     insideJoke: values['inside-joke'] ?? '',
   }
   log(`| Group context | ${describeContext(ctx)} |`)
@@ -240,6 +241,7 @@ async function main() {
   const story = storyResp.data.stories[0]
   log(`_model: ${storyResp.model} · ${Date.now() - t0}ms_`)
   log('')
+  if (!story) throw new Error('Story generation returned no stories')
   log(`### ${story.title}`)
   log('')
   log(`> ${story.summary}`)
