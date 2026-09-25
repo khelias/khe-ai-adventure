@@ -20,7 +20,9 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
-          cache: npm
+          # ~/.npm already persists on this runner; the Actions cache would
+          # re-download ~550 MB over the home line on every deploy.
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci
