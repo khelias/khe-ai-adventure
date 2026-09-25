@@ -24,13 +24,21 @@ product docs; infrastructure is in `khe-homelab`.
 - `npm run build` - `tsc -b && vite build`
 - `npm run lint` - ESLint with type-aware rules
 - `npm run test:unit` - node:test via tsx
-- `npm run ui:smoke` - headless Playwright against the Mock provider
+- `npm run ui:smoke` - headless Playwright against the Mock provider;
+  `PLAYWRIGHT_BASE_URL` reuses a running server instead of starting one,
+  `PLAYWRIGHT_BROWSER_CHANNEL` picks a local browser over bundled Chromium
 - `npm run playtest -- --genre=Thriller --duration=Short --language=et` -
-  prompt-quality run, transcripts into `playtest-transcripts/`
+  prompt-quality run, transcripts into `playtest-transcripts/`, rubric in
+  `docs/prompt-audit.md`
 - `npm run eval` - deterministic checks over those transcripts
-- `npm run proxy:smoke` - signed smoke against the live proxy (needs
-  `API_SECRET`)
+- `npm run proxy:smoke` - signed smoke against the live proxy
 - `npm run schema:hashes` - regenerate `ALLOWED_SCHEMA_SHAPES`
+
+`proxy:smoke` needs `API_SECRET`, and `npm run dev` against the live proxy
+needs the same value as `VITE_API_SECRET`. It lives in
+`services/apps/games/.env` on the VM; the operator fetches it with
+`ssh khe@docker-vm 'cd /home/khe/homelab/services/apps/games && set -a && . ./.env && printf %s "$API_SECRET"'`
+into the variable, never into a file or the conversation.
 
 CI and deploy run lint, build, test:unit, ui:smoke, schema:hashes and
 `node --check proxy/server.js`. Prompt or model changes also get a playtest;
