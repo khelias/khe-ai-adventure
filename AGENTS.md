@@ -30,7 +30,13 @@ product docs; infrastructure is in `khe-homelab`.
 - `npm run playtest -- --genre=Thriller --duration=Short --language=et` -
   prompt-quality run, transcripts into `playtest-transcripts/`, rubric in
   `docs/prompt-audit.md`
-- `npm run eval` - deterministic checks over those transcripts
+- `npm run eval` - deterministic checks over those transcripts, report only;
+  `-- --dir=<path>` reads another directory, `-- --threshold=<ratio>` and
+  `-- --threshold=<check>=<ratio>` (repeatable, overrides the default) gate
+  it. Exit 0 pass or report-only, 1 a check below its bound, a named check
+  without samples or no checkable turns, 2 usage or input error. API-error
+  turns are excluded from every check
+- `npm run eval:gate` - `eval` with the committed bounds
 - `npm run proxy:smoke` - signed smoke against the live proxy
 - `npm run schema:hashes` - regenerate `ALLOWED_SCHEMA_SHAPES`
 
@@ -58,8 +64,8 @@ proxy/
   et-style-guide.js  system prompt for the Estonian editor pass
 docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
                ui-ux, game-systems-audit; ADRs in decisions/
-scripts/       playtest.ts, eval/check.ts, proxy-smoke.ts, schema-hashes.ts
-tests/         ui-smoke.spec.ts, unit/game.test.ts
+scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts
+tests/         ui-smoke.spec.ts, unit/{game,eval}.test.ts
 ```
 
 ## Architecture invariants

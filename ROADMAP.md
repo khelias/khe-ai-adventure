@@ -117,9 +117,10 @@ transcripts show the rule is ineffective or redundant.
 #### Eval pipeline (incremental)
 
 Started with `scripts/eval/check.ts` (deterministic rule-based checks over
-`playtest-transcripts/`). Baseline finding: `choice_has_cost` passes only
-75% of turns, indicating real leakage of pure-upside choices to players
-despite proxy retry logic.
+`playtest-transcripts/`). Baseline finding (2026-09-25, 23 local
+transcripts, 106 turns after excluding 2 API-error turns): `choice_has_cost`
+passes only 77% (82/106), indicating real leakage of pure-upside choices to
+players despite proxy retry logic.
 
 Next steps, ordered by pedagogical value and effort:
 
@@ -127,10 +128,22 @@ Next steps, ordered by pedagogical value and effort:
    prose quality, 1-5 + reasoning) over the same transcript dataset.
    Surfaces judge-prompt design, structured output via tool_use, and
    judge consistency (run twice, compare).
-2. **Pass/fail gating** — `--threshold` flag and non-zero exit when a
-   check drops below its bound. Turns measurement into a decision.
-3. **CI integration** — GitHub Actions workflow runs `npm run eval` on
-   every PR that touches prompts, proxy, or schema; comments results.
+2. **Pass/fail gating** — done: `--threshold` bounds, exit 1 below a
+   bound, `--dir` to gate one fresh batch, `npm run eval:gate` with the
+   committed bounds (0.95, `choice_has_cost` 0.75, a ratchet just under the
+   baseline). CI runs the gate logic through unit tests over synthetic
+   transcripts; the transcripts themselves are gitignored.
+3. **CI integration** — GitHub Actions workflow generates fresh
+   transcripts (`npm run playtest`) on every PR that touches prompts,
+   proxy, or schema, gates that batch with `--dir`, and comments results.
+   A committed snapshot would not do: its numbers only move when the checker
+   does, and real transcripts carry group-context strings. Open constraints:
+   `API_SECRET` as an Actions secret, not available to fork PRs; the live
+   proxy runs main's `server.js` and schema allowlist, so a PR that changes a
+   schema shape is rejected and proxy retry changes are not exercised
+   (running the PR's `proxy/` in the job with a Gemini key avoids both); one
+   Short game is 8 turns, too few samples for a 0.75 bound, so several runs
+   per PR; token cost and minutes.
 4. **Production sampling** — pull a window of real scenes from proxy
    logs, run the same checks. Catches model drift that offline regression
    against fixed transcripts cannot.

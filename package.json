@@ -11,6 +11,7 @@
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
     "playtest": "tsx scripts/playtest.ts",
     "eval": "tsx scripts/eval/check.ts",
+    "eval:gate": "tsx scripts/eval/check.ts --threshold=0.95 --threshold=choice_has_cost=0.75",
     "ui:smoke": "playwright test tests/ui-smoke.spec.ts",
     "proxy:smoke": "tsx scripts/proxy-smoke.ts",
     "schema:hashes": "tsx scripts/schema-hashes.ts"
