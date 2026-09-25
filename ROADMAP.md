@@ -1,6 +1,6 @@
 # Roadmap
 
-Last reviewed: 2026-04-25
+Last reviewed: 2026-09-25
 
 AI Adventure Engine is a 20-40 minute pass-the-phone adventure game for a small
 group using one shared device. The next product decisions should come from real
@@ -58,11 +58,14 @@ Use the rubric in [docs/prompt-audit.md](docs/prompt-audit.md).
 
 ### 2. Model Measurement Pass
 
-Before changing model defaults, run a measured short-game matrix:
+Before changing model defaults, run a measured short-game matrix over the
+models in the proxy's `MODEL_ALLOWLIST` (`proxy/server.js`), currently:
 
 - `gemini-2.5-flash`
-- `gemini-2.5-flash-lite`
-- `gemini-3.1-flash-lite-preview`
+- `gemini-3.5-flash-lite`
+- `gemini-3.8-flash`
+- `claude-sonnet-5`
+- `claude-sonnet-4-6`
 
 Compare:
 
@@ -158,6 +161,134 @@ Next steps, ordered by pedagogical value and effort:
   insufficient.
 - Keep local model support out of the live path until latency, Estonian quality,
   and structured-output reliability are competitive.
+
+## Ambitions
+
+Long-horizon directions, not scheduled work. Each one names the asset it builds
+on, a first step that produces a number, and the gate it waits for. None of them
+may bend the Product Invariants; the ones that touch the Out Of Scope list are
+marked as later product directions. The benchmark is the backbone: the local
+model direction reuses it, and it gives the Estonian quality criterion in the
+Definition Of "Good Enough" a measurement instead of a feeling.
+
+### 1. Public Estonian Narration Benchmark
+
+- **What:** a published, repeatable comparison of how well language models
+  write Estonian narrative prose: grammar, word order, register and
+  translationese, alongside whether the output stays playable (valid schema,
+  three costed choices). The harness lives in this repo; results are a
+  versioned page with the prompt set, the scores and the date.
+- **Builds on:** the word-order and grammar rubric in `proxy/et-style-guide.js`
+  (sourced from EKK 2007), the "Estonian quality" row of the rubric in
+  [docs/prompt-audit.md](docs/prompt-audit.md), the deterministic checks and
+  gate in `scripts/eval/`, `scripts/playtest.ts --model` against the proxy's
+  `MODEL_ALLOWLIST`, and steps 1 (LLM judge) and 5 (human golden set) of the
+  eval pipeline above, which are exactly the parts a benchmark needs. No public
+  benchmark of this kind for Estonian narrative text is known to us
+  (unverified; check before publishing the claim).
+- **Who would use it:** Estonian developers choosing a model for
+  Estonian-facing product text, language-technology people who want a
+  narrative-register data point next to translation benchmarks, and this repo
+  itself, since it answers the model measurement pass with evidence.
+- **First published result:** the models already on the allowlist, run over a
+  fixed synthetic prompt set, scored on raw output and on editor-pass output.
+  The headline question is one this product already has: does the Gemini
+  editor pass make a cheap model read as well as a premium one?
+- **First measurable step:** keep the pre-editor text. Today the editor pass
+  overwrites each field in place and the proxy logs only `editor=<ms>`, so how
+  much the editor changed is not recorded anywhere. Recording both versions
+  gives a per-model edit ratio, a cheap first signal of how much correcting the
+  raw Estonian needed.
+- **Waits for:** the LLM-judge step and a small human-rated sample to calibrate
+  it against native readers. The prompt set must be synthetic and committed:
+  real transcripts are gitignored and carry player-typed group context.
+- **Main risk or cost:** judge bias (a model grading its own family), the
+  time native raters cost, and staleness, since model lineups change faster
+  than a hand-run benchmark. The rerun has to be one command, and the Gemini
+  Batch API noted in [docs/model-strategy.md](docs/model-strategy.md) is the
+  cheap path for offline runs. Scope honestly: this measures game narration,
+  not Estonian in general.
+
+### 2. Local Model On The Homelab
+
+- **What:** a third proxy provider that calls the homelab's Ollama, admitted
+  to the live path only if it passes the same benchmark and a latency bar.
+  If it did, the per-game API cost of the main calls would drop to zero.
+- **Builds on:** Ollama already runs in `khe-homelab` (`services/ai/ollama`):
+  CPU-only on an i7-12700K with no discrete GPU, capped at 10G RAM and 6 CPUs,
+  with `qwen2.5:7b` loaded. Provider selection is
+  already centralized in the proxy (ADR 0001), so the frontend would not change.
+- **Honest limits:** a turn is one full JSON object (scene, three choices with
+  `expectedChanges`, consequence text) and the UI waits for the whole object,
+  so CPU generation speed lands directly on the table as silence. CPU
+  tokens-per-second on this host has not been measured here. The proxy's
+  upstream timeout is 115 s under nginx's 120 s, and the Estonian editor pass
+  is a second call that today always goes to the configured `GEMINI_MODEL`, so
+  a local main model with a Gemini editor is cheaper, not free. Estonian
+  quality of 7B-class open models is the larger unknown and is what the
+  benchmark answers. Two games at once would queue on the same model.
+- **First measurable step:** run the benchmark prompt set directly against
+  Ollama, outside the proxy, and record time to a complete turn object, schema
+  validity rate and benchmark score for `qwen2.5:7b` and any open model that
+  fits the 10G cap. Compare with the per-turn times the existing transcripts
+  already record for Gemini. No live-path change.
+- **Waits for:** the benchmark. The Infrastructure rule above (local stays out
+  of the live path until competitive) stays in force; this gives it a
+  measurement. Reaching Ollama means `adventure-proxy` joins the
+  `ai-internal` network, a `khe-homelab` change.
+- **Main risk or cost:** the likely first answer is "not good enough on CPU",
+  which is still a useful benchmark row. The realistic enabler is the GPU on
+  the `khe-homelab` hardware wishlist, and that purchase has to beat the API
+  cost it replaces, which on the cheap default is already low; a measured
+  per-game cost does not exist yet and comes from the model measurement pass.
+  The stronger payoff is independence from provider pricing and model
+  retirement, not the saving.
+
+### 3. The Phone Reads Aloud (Later Direction)
+
+- **What:** optional Estonian speech synthesis for scene and consequence text,
+  so the person holding the phone can play instead of performing. This is
+  "Full voice narration" from the Out Of Scope list, argued as a later
+  direction, not part of the current loop.
+- **Builds on:** the README's own table ritual, where one person reads the
+  story aloud, and the one-shared-device invariant: the phone is already the
+  speaker in the middle of the table. The text is already edited Estonian
+  prose with bounded scene length (the `scene_length` check).
+- **First measurable step:** offline, send ten edited scenes through an
+  Estonian neural TTS engine (the University of Tartu's TartuNLP group builds
+  one; licence, API terms and handling of invented fantasy names are
+  unverified) and record synthesis time per scene plus a table rating of
+  whether it is listenable.
+- **Waits for:** the Definition Of "Good Enough", and the full Estonian table
+  playtest showing that reading aloud is actually a friction point rather than
+  part of the fun.
+- **Main risk or cost:** a synthetic voice can remove the human performance
+  that makes the reader role social; it adds latency to every turn and a
+  per-character cost if the engine is a paid API; and a noisy party room may
+  drown it out.
+
+### 4. Campaign Evenings (Later Direction)
+
+- **What:** one group continuing the same cast across several evenings, with
+  earlier outcomes, unresolved threads and secret-goal results carried forward
+  on the device. This is "Campaign persistence" from the Out Of Scope list,
+  argued as a later direction.
+- **Builds on:** the sequel flow already continues a story within a session:
+  `generateSequel` keeps the old roles, takes a player-written summary and
+  generates new abilities and parameters. Finished transcripts already persist
+  to `localStorage`, and ADR 0003 (client-owned game state) means a campaign
+  could stay on the device with no server-side storage.
+- **First measurable step:** count how often groups press the sequel button.
+  The proxy log line already names the schema, so the ratio of `sequelSchema`
+  requests to `storyGenerationSchema` requests over a window is a demand
+  signal that needs no new code.
+- **Waits for:** the Definition Of "Good Enough", a sequel ratio that shows
+  real demand, and a yes to "Does anyone want another round?" in table play.
+- **Main risk or cost:** carried context grows the prompt against the per-schema
+  input budgets, and raising `PROXY_MAX_*` or those budgets widens the abuse
+  ceiling (architecture invariant 6, ADR 0006). Secret-goal fairness across
+  sessions needs design, and campaign bookkeeping can pull the product away
+  from a 20-40 minute game that works cold.
 
 ## Out Of Scope For Now
 
