@@ -201,8 +201,9 @@ Controls:
 
 Limitations:
 
-- `VITE_API_SECRET` is bundled into the browser, so HMAC is a friction layer,
-  not a true secret.
+- The HMAC key reaches the browser (the web image's runtime `config.js`, or
+  the build-time `VITE_API_SECRET`), so HMAC is a friction layer, not a true
+  secret.
 - Origin can be spoofed by a determined caller.
 - Per-client usage budgets are in-memory process counters, not durable billing
   controls. They are meant to cap repeated valid public calls between deploys.

@@ -9,9 +9,11 @@ on:
 permissions:
   contents: read
 
+# A push to main is never cancelled: publish must not stop between moving the
+# proxy's main tag and the web's.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   app:
@@ -49,37 +51,264 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: UI smoke
+        run: npm run ui:smoke
+
       - name: Schema hash check
         run: npm run schema:hashes
 
       - name: Proxy syntax check
         run: node --check proxy/server.js
 
-  proxy:
-    name: Proxy build
+  # The required check. Read-only, so the scanner never runs where a token can
+  # write packages; publish rebuilds from this job's layer cache.
+  images:
+    name: Images
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: proxy/package-lock.json
+          persist-credentials: false
 
-      - name: Install proxy dependencies
-        working-directory: proxy
-        run: npm ci
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - name: Proxy syntax check
-        working-directory: proxy
-        run: node --check server.js
+      - name: Build proxy
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: proxy
+          load: true
+          tags: khe-ai-adventure-proxy:ci
+          cache-from: type=gha,scope=proxy
+          cache-to: type=gha,mode=max,scope=proxy
 
-      - name: Docker build
-        run: docker build -t adventure-proxy-ci ./proxy
+      - name: Build web
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: web/Dockerfile
+          load: true
+          tags: khe-ai-adventure-web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # Grype's ignore rules have no expiry of their own (khe-meta ADR-008).
+      - name: Check scan ignore rules have not expired
+        run: |
+          today=$(date -u +%F)
+          status=0
+          while IFS= read -r reason; do
+            case $reason in
+              "until "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]:*) ;;
+              *)
+                echo "::error file=.grype.yaml::ignore rule reason must start with 'until YYYY-MM-DD:': $reason"
+                status=1
+                continue
+                ;;
+            esac
+            until=${reason#until }
+            until=${until%%:*}
+            if [[ "$until" < "$today" ]]; then
+              echo "::error file=.grype.yaml::ignore rule expired on $until: $reason"
+              status=1
+            fi
+          done < <(yq -r '.ignore[] | .reason // ""' .grype.yaml)
+          exit "$status"
+
+      - name: Export images for the scanner
+        run: |
+          docker save -o proxy.tar khe-ai-adventure-proxy:ci
+          docker save -o web.tar khe-ai-adventure-web:ci
+
+      - name: Scan proxy
+        uses: docker://anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
+        env:
+          GRYPE_DB_CACHE_DIR: .grype-db
+        with:
+          args: docker-archive:proxy.tar
+
+      - name: Scan web
+        uses: docker://anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
+        env:
+          GRYPE_DB_CACHE_DIR: .grype-db
+        with:
+          args: docker-archive:web.tar
+
+  # The only job that can write packages or mint an OIDC token (khe-meta ADR-008).
+  publish:
+    name: Publish images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [app, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    concurrency:
+      group: publish-main
+      cancel-in-progress: false
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      IMAGE_BASE: ghcr.io/khelias/khe-ai-adventure
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # A re-run of an older commit must not move main backwards.
+      - name: Stop unless this commit is still main's tip
+        id: tip
+        run: |
+          tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$tip" = "$GITHUB_SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::main is at $tip, not $GITHUB_SHA; nothing is published from this run"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Buildx
+        if: steps.tip.outputs.current == 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        if: steps.tip.outputs.current == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # A sha- tag is never overwritten, so a rollback pin keeps its digest.
+      # GHCR answers 403 for a package that does not exist yet.
+      - name: Check for existing sha tags
+        id: existing
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          for part in proxy web; do
+            ref="$IMAGE_BASE-$part:sha-$GITHUB_SHA"
+            if out=$(docker buildx imagetools inspect "$ref" 2>&1); then
+              echo "::notice::$ref already exists and is not rebuilt"
+              echo "$part=true" >> "$GITHUB_OUTPUT"
+            elif grep -qiE 'not found|403 forbidden|denied' <<<"$out"; then
+              echo "$part=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "$out" >&2
+              exit 1
+            fi
+          done
+
+      - name: Proxy metadata
+        id: meta-proxy
+        if: steps.existing.outputs.proxy == 'false'
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.IMAGE_BASE }}-proxy
+          flavor: latest=false
+          tags: type=sha,format=long
+          labels: org.opencontainers.image.title=khe-ai-adventure-proxy
+
+      - name: Push proxy
+        id: push-proxy
+        if: steps.existing.outputs.proxy == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: proxy
+          push: true
+          tags: ${{ steps.meta-proxy.outputs.tags }}
+          labels: ${{ steps.meta-proxy.outputs.labels }}
+          annotations: ${{ steps.meta-proxy.outputs.annotations }}
+          cache-from: type=gha,scope=proxy
+          sbom: true
+          provenance: mode=max
+
+      # Storage records exist only for organisation-owned repos; khelias is a
+      # personal account.
+      - name: Attest proxy
+        if: steps.existing.outputs.proxy == 'false'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_BASE }}-proxy
+          subject-digest: ${{ steps.push-proxy.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      - name: Web metadata
+        id: meta-web
+        if: steps.existing.outputs.web == 'false'
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.IMAGE_BASE }}-web
+          flavor: latest=false
+          tags: type=sha,format=long
+          labels: org.opencontainers.image.title=khe-ai-adventure-web
+
+      - name: Push web
+        id: push-web
+        if: steps.existing.outputs.web == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: web/Dockerfile
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
+          annotations: ${{ steps.meta-web.outputs.annotations }}
+          cache-from: type=gha,scope=web
+          sbom: true
+          provenance: mode=max
+
+      - name: Attest web
+        if: steps.existing.outputs.web == 'false'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_BASE }}-web
+          subject-digest: ${{ steps.push-web.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+      # Both main tags move in this one step, after both sha- tags exist, so a
+      # Renovate run sees the old pair or the new pair except for about a second.
+      - name: Move both main tags
+        if: steps.tip.outputs.current == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::notice::main moved on to $tip during this run; its own run moves the main tags"
+            exit 0
+          fi
+          # Re-runs skip an existing sha- tag, so an attest that failed once
+          # would otherwise never happen.
+          for part in proxy web; do
+            gh attestation verify "oci://$IMAGE_BASE-$part:sha-$GITHUB_SHA" --owner khelias >/dev/null
+          done
+          for part in proxy web; do
+            docker buildx imagetools create -t "$IMAGE_BASE-$part:main" "$IMAGE_BASE-$part:sha-$GITHUB_SHA"
+          done
+          for part in proxy web; do
+            main=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:main" --format '{{json .Manifest}}' | jq -r .digest)
+            pinned=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:sha-$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+            if [ "$main" != "$pinned" ]; then
+              echo "::error::$part main is $main, sha-$GITHUB_SHA is $pinned"
+              exit 1
+            fi
+            echo "- \`$IMAGE_BASE-$part:main@$main\`" >> "$GITHUB_STEP_SUMMARY"
+          done

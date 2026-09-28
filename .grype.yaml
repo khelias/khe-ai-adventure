@@ -1,0 +1,12 @@
+# Scan gate for the images job in .github/workflows/ci.yml (khe-meta ADR-008).
+# Fails on HIGH or CRITICAL findings that have a fix.
+fail-on-severity: high
+only-fixed: true
+
+# The only way past a finding that cannot be fixed yet. Every rule's reason
+# starts with "until YYYY-MM-DD:", and CI fails once that date has passed:
+#   - vulnerability: CVE-2026-12345
+#     package:
+#       name: example
+#     reason: "until 2026-11-01: no fixed release upstream yet, not reachable from server.js"
+ignore: []

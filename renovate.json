@@ -48,6 +48,12 @@
       "description": "Automerge digest and pin updates",
       "matchUpdateTypes": ["digest", "pin"],
       "automerge": true
+    },
+    {
+      "description": "The image scanner in ci.yml is itself the supply-chain risk it guards against (khe-meta ADR-008): never automerged, and a release waits a week, long enough for a compromised one to be pulled. Last, so it overrides the automerge rules above.",
+      "matchPackageNames": ["anchore/grype", "ghcr.io/anchore/grype"],
+      "minimumReleaseAge": "7 days",
+      "automerge": false
     }
   ],
   "lockFileMaintenance": {

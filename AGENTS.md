@@ -14,9 +14,14 @@ product docs; infrastructure is in `khe-homelab`.
   because typescript-eslint does not support TS 7 yet. A plain Renovate bump
   of `typescript` to 7 breaks lint.
 - Proxy (`proxy/`, own `package.json`): Express 5, Anthropic SDK and a Gemini
-  fetch adapter, shipped as a `node:24-alpine` image. Default and allowed
-  models are at the top of `proxy/server.js`; the reasoning is in
-  `docs/model-strategy.md`.
+  fetch adapter, shipped as a multi-stage `node:24-alpine` image whose runtime
+  stage has no npm. Default and allowed models are at the top of
+  `proxy/server.js`; the reasoning is in `docs/model-strategy.md`.
+- Web image (`web/`, build context the repo root): the Vite build served by
+  `nginx-unprivileged` on 8080 under `/adventure/`. At start,
+  `web/40-adventure-config.sh` writes `API_SECRET` into `config.js`, which
+  `index.html` loads before the bundle; `public/config.js` is the empty
+  placeholder for dev and `ui:smoke`.
 
 ## Commands
 
@@ -47,14 +52,19 @@ needs the same value as `VITE_API_SECRET`. It lives in
 into the variable, never into a file or the conversation.
 
 CI and deploy run lint, build, test:unit, ui:smoke, schema:hashes and
-`node --check proxy/server.js`. Prompt or model changes also get a playtest;
-judge them by transcripts and proxy telemetry, not one attractive run.
+`node --check proxy/server.js`. CI's `Images` job also builds both images and
+scans them with Grype (`.grype.yaml`: HIGH or CRITICAL with a fix fails; an
+ignore rule's reason starts with `until YYYY-MM-DD:` and fails CI once past).
+Local image check: `docker build -f web/Dockerfile .` and `docker build ./proxy`.
+
+Prompt or model changes also get a playtest; judge them by transcripts and
+proxy telemetry, not one attractive run.
 
 ## Layout
 
 ```
 src/
-  api/         live + mock providers
+  api/         live + mock providers, runtime config
   components/  the screens (Setup, Role, Secret, Game, GameOver, ...)
   game/        engine, actions, secrets, transcript, types
   i18n/        et + en language packs
@@ -62,10 +72,11 @@ src/
 proxy/
   server.js        schema guard, origin check, rate limit, editor routing
   et-style-guide.js  system prompt for the Estonian editor pass
+web/           Dockerfile, nginx.conf, config.js entrypoint of the web image
 docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
                ui-ux, game-systems-audit; ADRs in decisions/
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts
-tests/         ui-smoke.spec.ts, unit/{game,eval}.test.ts
+tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config}.test.ts
 ```
 
 ## Architecture invariants
@@ -80,8 +91,11 @@ tests/         ui-smoke.spec.ts, unit/{game,eval}.test.ts
 4. **Per-visitor rate limit** keys on `$http_cf_connecting_ip` in the nginx
    config in `khe-homelab`. Without it every visitor shares one counter
    behind cloudflared.
-5. **HMAC secret** `VITE_API_SECRET` (frontend) must equal `API_SECRET`
-   (proxy). Deploy reads it from `services/apps/games/.env` on the VM.
+5. **HMAC secret:** the frontend's key must equal `API_SECRET` (proxy). It
+   comes from `window.__ADVENTURE_CONFIG__.apiSecret` (the web image's
+   runtime `config.js`), falling back to the build-time `VITE_API_SECRET`
+   (`src/api/runtimeConfig.ts`). Both are read from
+   `services/apps/games/.env` on the VM.
 6. **Rate and token budgets are security controls.** `PROXY_MAX_*` bounds
    the abuse ceiling of the client-supplied system prompt
    ([ADR 0006](docs/decisions/0006-client-supplied-system-prompt.md));
@@ -117,3 +131,9 @@ Push to main runs `deploy.yml` on the self-hosted homelab runner: the gate
 above, static assets to `/srv/data/games/adventure/app/`, then
 `docker build -t games-adventure-proxy:latest ./proxy` and a
 `--force-recreate` of `adventure-proxy` in the homelab games stack.
+
+CI's `publish` job, on push to main after `App quality` and `Images`, pushes
+`ghcr.io/khelias/khe-ai-adventure-proxy` and `-web` as `sha-<commit>` with
+SBOM, provenance and an attestation, then moves both `main` tags in one step
+(khe-meta ADR-008). khe-homelab does not run these images yet; until it pins
+them, `deploy.yml` is what serves the site.

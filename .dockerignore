@@ -1,0 +1,12 @@
+# Context of web/Dockerfile. proxy/ builds from its own context and ignore file.
+.git
+.github
+.claude
+node_modules
+dist
+proxy
+test-results
+playwright-report
+playtest-transcripts
+tmp
+*.log

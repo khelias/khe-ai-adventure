@@ -1,5 +1,6 @@
 import type { Language, Provider } from '../game/types'
 import { callMockAI } from './mockAdventure'
+import { resolveApiSecret } from './runtimeConfig'
 
 const API_URL = '/adventure/api/generate'
 
@@ -8,7 +9,7 @@ const API_URL = '/adventure/api/generate'
 // src/game/prompts/schemas.ts.
 export type JsonSchema = Record<string, unknown>
 
-const secret = import.meta.env.VITE_API_SECRET ?? ''
+const secret = resolveApiSecret(window.__ADVENTURE_CONFIG__, import.meta.env.VITE_API_SECRET)
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
