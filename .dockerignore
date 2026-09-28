@@ -10,3 +10,5 @@ playwright-report
 playtest-transcripts
 tmp
 *.log
+.env*
+*.local

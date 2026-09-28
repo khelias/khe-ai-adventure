@@ -64,7 +64,7 @@ jobs:
         run: node --check proxy/server.js
 
   # The required check. Read-only, so the scanner never runs where a token can
-  # write packages; publish rebuilds from this job's layer cache.
+  # write packages.
   images:
     name: Images
     runs-on: ubuntu-latest
@@ -148,6 +148,8 @@ jobs:
           args: docker-archive:web.tar
 
   # The only job that can write packages or mint an OIDC token (khe-meta ADR-008).
+  # It builds with no cache: the gha cache can be written by any step holding
+  # the runner's cache token, the scanner container and npm scripts included.
   publish:
     name: Publish images
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -228,7 +230,6 @@ jobs:
           labels: org.opencontainers.image.title=khe-ai-adventure-proxy
 
       - name: Push proxy
-        id: push-proxy
         if: steps.existing.outputs.proxy == 'false'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -237,20 +238,9 @@ jobs:
           tags: ${{ steps.meta-proxy.outputs.tags }}
           labels: ${{ steps.meta-proxy.outputs.labels }}
           annotations: ${{ steps.meta-proxy.outputs.annotations }}
-          cache-from: type=gha,scope=proxy
+          no-cache: true
           sbom: true
           provenance: mode=max
-
-      # Storage records exist only for organisation-owned repos; khelias is a
-      # personal account.
-      - name: Attest proxy
-        if: steps.existing.outputs.proxy == 'false'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ env.IMAGE_BASE }}-proxy
-          subject-digest: ${{ steps.push-proxy.outputs.digest }}
-          push-to-registry: true
-          create-storage-record: false
 
       - name: Web metadata
         id: meta-web
@@ -265,7 +255,6 @@ jobs:
           labels: org.opencontainers.image.title=khe-ai-adventure-web
 
       - name: Push web
-        id: push-web
         if: steps.existing.outputs.web == 'false'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -275,16 +264,42 @@ jobs:
           tags: ${{ steps.meta-web.outputs.tags }}
           labels: ${{ steps.meta-web.outputs.labels }}
           annotations: ${{ steps.meta-web.outputs.annotations }}
-          cache-from: type=gha,scope=web
+          no-cache: true
           sbom: true
           provenance: mode=max
 
+      # Attests whatever sha- digest lacks an attestation, including one pushed
+      # by an earlier attempt whose attest step failed; a re-run skips the push.
+      - name: Find unattested digests
+        id: attested
+        if: steps.tip.outputs.current == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for part in proxy web; do
+            digest=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:sha-$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+            count=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest" --jq '.attestations | length' 2>/dev/null || echo 0)
+            echo "${part}_digest=$digest" >> "$GITHUB_OUTPUT"
+            if [ "$count" -ge 1 ]; then echo "$part=true"; else echo "$part=false"; fi >> "$GITHUB_OUTPUT"
+          done
+
+      # Storage records exist only for organisation-owned repos; khelias is a
+      # personal account.
+      - name: Attest proxy
+        if: steps.attested.outputs.proxy == 'false'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_BASE }}-proxy
+          subject-digest: ${{ steps.attested.outputs.proxy_digest }}
+          push-to-registry: true
+          create-storage-record: false
+
       - name: Attest web
-        if: steps.existing.outputs.web == 'false'
+        if: steps.attested.outputs.web == 'false'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE_BASE }}-web
-          subject-digest: ${{ steps.push-web.outputs.digest }}
+          subject-digest: ${{ steps.attested.outputs.web_digest }}
           push-to-registry: true
           create-storage-record: false
 
@@ -300,19 +315,29 @@ jobs:
             echo "::notice::main moved on to $tip during this run; its own run moves the main tags"
             exit 0
           fi
-          # Re-runs skip an existing sha- tag, so an attest that failed once
-          # would otherwise never happen. Asked by digest through the API, so
-          # no registry login is involved; any error counts as missing.
-          for part in proxy web; do
-            digest=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:sha-$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+          # A transient registry error between the two moves would leave a
+          # mismatched pair until the next run.
+          retry() {
+            for attempt in 1 2 3 4 5; do
+              "$@" && return 0
+              echo "::warning::attempt $attempt failed: $*"
+              sleep $((attempt * 5))
+            done
+            return 1
+          }
+          attested() {
+            digest=$(docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest)
             count=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest" --jq '.attestations | length' 2>/dev/null || echo 0)
-            if [ "$count" -lt 1 ]; then
-              echo "::error::$part sha-$GITHUB_SHA ($digest) has no attestation; main is not moved"
+            [ "$count" -ge 1 ]
+          }
+          for part in proxy web; do
+            if ! retry attested "$IMAGE_BASE-$part:sha-$GITHUB_SHA"; then
+              echo "::error::$part sha-$GITHUB_SHA has no attestation; main is not moved"
               exit 1
             fi
           done
           for part in proxy web; do
-            docker buildx imagetools create -t "$IMAGE_BASE-$part:main" "$IMAGE_BASE-$part:sha-$GITHUB_SHA"
+            retry docker buildx imagetools create -t "$IMAGE_BASE-$part:main" "$IMAGE_BASE-$part:sha-$GITHUB_SHA"
           done
           for part in proxy web; do
             main=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:main" --format '{{json .Manifest}}' | jq -r .digest)
