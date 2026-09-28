@@ -103,6 +103,11 @@ jobs:
       # Grype's ignore rules have no expiry of their own (khe-meta ADR-008).
       - name: Check scan ignore rules have not expired
         run: |
+          # Read first, so a missing yq or a broken file fails the step
+          # instead of yielding no rules.
+          rules=$(yq '.ignore | length' .grype.yaml)
+          if [ "$rules" -eq 0 ]; then exit 0; fi
+          reasons=$(yq -r '.ignore[] | .reason // ""' .grype.yaml)
           today=$(date -u +%F)
           status=0
           while IFS= read -r reason; do
@@ -120,7 +125,7 @@ jobs:
               echo "::error file=.grype.yaml::ignore rule expired on $until: $reason"
               status=1
             fi
-          done < <(yq -r '.ignore[] | .reason // ""' .grype.yaml)
+          done <<< "$reasons"
           exit "$status"
 
       - name: Export images for the scanner
@@ -296,9 +301,15 @@ jobs:
             exit 0
           fi
           # Re-runs skip an existing sha- tag, so an attest that failed once
-          # would otherwise never happen.
+          # would otherwise never happen. Asked by digest through the API, so
+          # no registry login is involved; any error counts as missing.
           for part in proxy web; do
-            gh attestation verify "oci://$IMAGE_BASE-$part:sha-$GITHUB_SHA" --owner khelias >/dev/null
+            digest=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:sha-$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+            count=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest" --jq '.attestations | length' 2>/dev/null || echo 0)
+            if [ "$count" -lt 1 ]; then
+              echo "::error::$part sha-$GITHUB_SHA ($digest) has no attestation; main is not moved"
+              exit 1
+            fi
           done
           for part in proxy web; do
             docker buildx imagetools create -t "$IMAGE_BASE-$part:main" "$IMAGE_BASE-$part:sha-$GITHUB_SHA"
