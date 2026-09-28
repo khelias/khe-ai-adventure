@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/khelias/khe-ai-adventure/actions/workflows/ci.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/khelias/khe-ai-adventure/actions/workflows/codeql.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/codeql.yml)
-[![Deploy](https://github.com/khelias/khe-ai-adventure/actions/workflows/deploy.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/deploy.yml)
 
 A party adventure game for 3-6 players around one phone, live at
 [games.khe.ee/adventure](https://games.khe.ee/adventure/).
@@ -61,10 +60,11 @@ in [AGENTS.md](AGENTS.md).
 
 ## Where it runs
 
-Every push to `main` deploys through a self-hosted runner on the homelab VM:
-static assets to the games nginx mount and a rebuilt proxy container. The
-infrastructure is in [khe-homelab](https://github.com/khelias/khe-homelab);
-this repo owns the app, proxy, prompts, contracts and product docs.
+Every push to `main` publishes a web image and a proxy image to GitHub's
+container registry. [khe-homelab](https://github.com/khelias/khe-homelab) pins
+both and runs them in its games stack, and Renovate moves those pins, so the
+deploy is a merge there. This repo owns the app, proxy, prompts, contracts and
+product docs.
 
 ## More
 

@@ -32,9 +32,10 @@ adventure proxy. The frontend never calls provider APIs directly.
 - `language`: enables the Estonian editor pass when set to `et`.
 
 Requests may also carry `x-adventure-signature`, an HMAC over the raw body.
-This is not a true client secret because `VITE_API_SECRET` ships in the
-browser bundle, but it blocks casual unsigned calls and keeps live and local
-proxy requests aligned.
+This is not a true client secret because the key reaches every browser (the
+web image serves it in `/adventure/config.js`, and `npm run dev` uses
+`VITE_API_SECRET`), but it blocks casual unsigned calls and keeps live and
+local proxy requests aligned.
 
 ## Proxy guards
 

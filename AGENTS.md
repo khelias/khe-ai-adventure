@@ -43,7 +43,7 @@ product docs; infrastructure is in `khe-homelab`.
   turns are excluded from every check
 - `npm run eval:gate` - `eval` with the committed bounds
 - `npm run proxy:smoke` - signed smoke against the live proxy
-- `npm run schema:hashes` - regenerate `ALLOWED_SCHEMA_SHAPES`
+- `npm run schema:hashes` - regenerate `ALLOWED_SCHEMA_HASHES`
 
 `proxy:smoke` needs `API_SECRET`, and `npm run dev` against the live proxy
 needs the same value as `VITE_API_SECRET`. It lives in
@@ -51,7 +51,7 @@ needs the same value as `VITE_API_SECRET`. It lives in
 `ssh khe@docker-vm 'cd /home/khe/homelab/services/apps/games && set -a && . ./.env && printf %s "$API_SECRET"'`
 into the variable, never into a file or the conversation.
 
-CI and deploy run lint, build, test:unit, ui:smoke, schema:hashes and
+CI runs lint, build, test:unit, ui:smoke, schema:hashes and
 `node --check proxy/server.js`. CI's `Images` job also builds both images and
 scans them with Grype (`.grype.yaml`: HIGH or CRITICAL with a fix fails; an
 ignore rule's reason starts with `until YYYY-MM-DD:` and fails CI once past).
@@ -83,7 +83,7 @@ tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config}.test.ts
 
 1. **The browser never calls an AI provider.** All generation goes through
    `proxy/`.
-2. **Exact schema hash allowlist** (`ALLOWED_SCHEMA_SHAPES` in
+2. **Exact schema hash allowlist** (`ALLOWED_SCHEMA_HASHES` in
    `proxy/server.js`). A changed request shape updates both sides in the same
    commit, with `npm run schema:hashes` regenerating the allowlist.
 3. **Origin check:** `Origin` or `Referer` must match `games.khe.ee` or a
@@ -94,8 +94,9 @@ tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config}.test.ts
 5. **HMAC secret:** the frontend's key must equal `API_SECRET` (proxy). It
    comes from `window.__ADVENTURE_CONFIG__.apiSecret` (the web image's
    runtime `config.js`), falling back to the build-time `VITE_API_SECRET`
-   (`src/api/runtimeConfig.ts`). Both are read from
-   `services/apps/games/.env` on the VM.
+   (`src/api/runtimeConfig.ts`), which only `npm run dev` uses. The web
+   container gets `API_SECRET` from `services/apps/games/.env` on the VM, the
+   same value the proxy reads.
 6. **Rate and token budgets are security controls.** `PROXY_MAX_*` bounds
    the abuse ceiling of the client-supplied system prompt
    ([ADR 0006](docs/decisions/0006-client-supplied-system-prompt.md));
@@ -127,13 +128,16 @@ text; the whole response stays under nginx's 120 s `proxy_read_timeout`.
 
 ## Deployment
 
-Push to main runs `deploy.yml` on the self-hosted homelab runner: the gate
-above, static assets to `/srv/data/games/adventure/app/`, then
-`docker build -t games-adventure-proxy:latest ./proxy` and a
-`--force-recreate` of `adventure-proxy` in the homelab games stack.
-
 CI's `publish` job, on push to main after `App quality` and `Images`, pushes
 `ghcr.io/khelias/khe-ai-adventure-proxy` and `-web` as `sha-<commit>` with
 SBOM, provenance and an attestation, then moves both `main` tags in one step
-(khe-meta ADR-008). khe-homelab does not run these images yet; until it pins
-them, `deploy.yml` is what serves the site.
+(khe-meta ADR-008). Nothing in this repo touches the VM.
+
+khe-homelab pins both images as `:main@sha256:<digest>` in
+`services/apps/games/docker-compose.yml`. Renovate there sees the new `main`
+digests and opens one grouped PR that automerges, and the merge is the
+deploy. So a push here goes live hours later, not at once.
+
+Rollback is a khe-homelab change: pin both images to the same
+`sha-<full commit>@sha256:<digest>` of a known good commit, never one image
+alone (invariant 2). The procedure is in khe-homelab's `AGENTS.md`.

@@ -18,8 +18,8 @@ ends.
   are opt-in.
 - **Good Estonian output**: generated Estonian text is edited by a dedicated
   Gemini editor pass.
-- **Simple deployment**: frontend and proxy deploy from one repo to the homelab
-  games stack.
+- **Simple deployment**: frontend and proxy ship as two images from one commit
+  to the homelab games stack.
 
 ## System Context
 
@@ -212,27 +212,33 @@ Limitations:
 
 ## Deployment
 
-Both frontend and proxy ship from this repo.
+Both frontend and proxy ship from this repo, as two images built from the same
+commit (khe-meta ADR-008).
 
 ```mermaid
 flowchart LR
     Dev["Developer"]
     Repo["khe-ai-adventure"]
-    Runner["GitHub Actions<br/>self-hosted runner"]
-    VM["Homelab VM"]
+    CI["GitHub Actions CI<br/>build, scan, publish"]
+    GHCR["GHCR<br/>web + proxy images"]
+    Homelab["khe-homelab<br/>digest pins"]
+    Renovate["Renovate"]
     Nginx["games nginx container"]
+    Web["adventure-web container"]
     Proxy["adventure-proxy container"]
 
     Dev -->|"push main"| Repo
-    Repo --> Runner
-    Runner -->|"build Vite app"| Nginx
-    Runner -->|"build + restart proxy image"| Proxy
-    Nginx --> VM
-    Proxy --> VM
+    Repo --> CI
+    CI -->|"sha- and main tags"| GHCR
+    Renovate -->|"grouped PR, automerge"| Homelab
+    GHCR -.->|"new digest"| Renovate
+    Homelab -->|"deploy on merge"| Nginx
+    Nginx -->|"/adventure/"| Web
+    Nginx -->|"/adventure/api/"| Proxy
 ```
 
-The homelab repository owns Docker Compose orchestration, nginx config, network
-wiring, and environment values. This repo owns the application, proxy code,
+The homelab repository owns Docker Compose orchestration, the image pins, nginx
+config, network wiring, and environment values. This repo owns the application, proxy code,
 prompts, schemas, and documentation.
 
 ## Code Map
