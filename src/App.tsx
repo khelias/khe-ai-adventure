@@ -76,6 +76,7 @@ export default function App() {
           <span aria-hidden="true">·</span>
           <a href={privacyHref}>{strings.footerPrivacyLink}</a>
         </nav>
+        <span>{strings.footerAiDisclosure}</span>
         <span>{strings.footerHosting}</span>
       </footer>
     </div>

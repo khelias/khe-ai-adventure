@@ -30,7 +30,7 @@ export function GameOverScreen() {
     .filter((role) => secrets.find((secret) => secret.ownerRoleId === role.id)?.result === 'won')
     .map((role) => role.name)
 
-  const fullStoryText = [...allScenes, text].join('\n\n—\n\n')
+  const fullStoryText = `${[...allScenes, text].join('\n\n—\n\n')}\n\n${strings.storyCopyCredit}`
 
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(fullStoryText)

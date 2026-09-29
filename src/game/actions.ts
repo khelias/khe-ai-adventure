@@ -158,6 +158,7 @@ function buildParameterEvents(args: {
 
 export async function generateStories(): Promise<void> {
   const { settings } = useGameStore.getState()
+  if (!settings.adultsConfirmed) return
   const store = useGameStore.getState()
   store.setError(null)
   store.setLoading(true)

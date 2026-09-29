@@ -21,11 +21,17 @@ import {
 } from '../game/transcript'
 
 const PROVIDER_STORAGE_KEY = 'adventureProvider'
+const ADULTS_CONFIRMED_STORAGE_KEY = 'adventureAdultsConfirmed'
 
 function loadStoredProvider(): Settings['provider'] {
   if (typeof window === 'undefined') return 'gemini'
   const stored = window.localStorage.getItem(PROVIDER_STORAGE_KEY)
   return stored === 'claude' || stored === 'gemini' || stored === 'mock' ? stored : 'gemini'
+}
+
+function loadStoredAdultsConfirmed(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(ADULTS_CONFIRMED_STORAGE_KEY) === 'true'
 }
 
 const initialSettings: Settings = {
@@ -40,6 +46,7 @@ const initialSettings: Settings = {
     vibe: '',
     insideJoke: '',
   },
+  adultsConfirmed: loadStoredAdultsConfirmed(),
 }
 
 interface GameState {
@@ -148,6 +155,10 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
       }
       if (key === 'provider' && typeof window !== 'undefined') {
         window.localStorage.setItem(PROVIDER_STORAGE_KEY, value as string)
+      }
+      if (key === 'adultsConfirmed' && typeof window !== 'undefined') {
+        if (value === true) window.localStorage.setItem(ADULTS_CONFIRMED_STORAGE_KEY, 'true')
+        else window.localStorage.removeItem(ADULTS_CONFIRMED_STORAGE_KEY)
       }
       return { settings: { ...state.settings, [key]: value } }
     }),

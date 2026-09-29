@@ -126,6 +126,8 @@ export interface Settings {
   genre: Genre
   duration: Duration
   context: ContextInput
+  // Self-declared: every player is 18 or older. Asked once per device.
+  adultsConfirmed: boolean
 }
 
 export type GameOverKind = 'narrative' | 'parametric' | null

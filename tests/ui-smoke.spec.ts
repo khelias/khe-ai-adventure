@@ -95,6 +95,7 @@ async function completeLongSixPlayerSetup(page: Page) {
   await expect(page.getByRole('heading', { name: 'Kes mängivad?' })).toBeVisible()
   await page.getByRole('button', { name: '6 mängijat' }).click()
   await page.getByPlaceholder(/Mart, Mari ja Jaan/).fill('Mari, Jaan, Liis, Rasmus, Kärt ja Toomas')
+  await expect(page.getByText(/saadetakse loo loomiseks tehisintellekti teenusepakkujale/)).toBeVisible()
   await page.getByRole('button', { name: /Järgmine samm/ }).click()
 
   await expect(page.getByRole('heading', { name: 'Kus seiklus algab?' })).toBeVisible()
@@ -104,7 +105,11 @@ async function completeLongSixPlayerSetup(page: Page) {
 
   await expect(page.getByRole('heading', { name: 'Viimane detail' })).toBeVisible()
   await page.getByPlaceholder(/keegi unustas/).fill('Tablool vilgub number 13')
-  await page.getByRole('button', { name: /Koosta seiklus/ }).click()
+  const startButton = page.getByRole('button', { name: /Koosta seiklus/ })
+  await expect(startButton).toBeDisabled()
+  await page.getByRole('checkbox', { name: 'Kinnitan, et kõik mängijad on vähemalt 18-aastased' }).check()
+  await expect(startButton).toBeEnabled()
+  await startButton.click()
 }
 
 async function verifyStoryChoice(page: Page) {
@@ -191,6 +196,7 @@ test.describe('desktop setup smoke', () => {
 
     await gotoFreshSetup(page)
     await chooseMockProvider(page)
+    await expect(page.getByText('18+ · Lugu kirjutab tehisintellekt')).toBeVisible()
 
     await expect(page).toHaveScreenshot('desktop-setup.png')
     await expectNoBrowserErrors(errors, testInfo)

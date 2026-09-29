@@ -10,6 +10,10 @@ interface StringTable {
   footerLinksLabel: string
   footerPrivacyLink: string
   footerHosting: string
+  footerAiDisclosure: string
+  adultsConfirmLabel: string
+  aiInputHint: string
+  storyCopyCredit: string
   playerCountLabel: string
   playerCountQuestion: string
   durationQuestion: string
@@ -181,6 +185,10 @@ export const translations: Record<Language, StringTable> = {
     footerLinksLabel: 'Lehe lingid',
     footerPrivacyLink: 'Privaatsus',
     footerHosting: 'Self-hosted in Tallinn',
+    footerAiDisclosure: '18+ · Lugu kirjutab tehisintellekt',
+    adultsConfirmLabel: 'Kinnitan, et kõik mängijad on vähemalt 18-aastased',
+    aiInputHint: 'Siia kirjutatu saadetakse loo loomiseks tehisintellekti teenusepakkujale. Kirjuta ainult seda, millega kõik laua ääres nõus on.',
+    storyCopyCredit: 'Lugu on loodud tehisintellektiga · games.khe.ee/adventure',
     playerCountLabel: 'Mängijate arv:',
     playerCountQuestion: 'Mängijate arv',
     durationQuestion: 'Mängu kestus',
@@ -381,6 +389,10 @@ export const translations: Record<Language, StringTable> = {
     footerLinksLabel: 'Page links',
     footerPrivacyLink: 'Privacy',
     footerHosting: 'Self-hosted in Tallinn',
+    footerAiDisclosure: '18+ · The story is written by AI',
+    adultsConfirmLabel: 'I confirm that all players are 18 or older',
+    aiInputHint: 'What you type here is sent to the AI provider to write the story. Enter only what everyone at the table is fine with.',
+    storyCopyCredit: 'Story generated with AI · games.khe.ee/adventure',
     playerCountLabel: 'Number of players',
     playerCountQuestion: 'Number of players',
     durationQuestion: 'Game length',

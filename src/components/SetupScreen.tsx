@@ -332,6 +332,7 @@ export function SetupScreen() {
                 onChange={(e) => setCtx({ playersDesc: e.target.value })}
                 className="input-page"
               />
+              <p className="setup-ai-hint">{strings.aiInputHint}</p>
             </div>
           </div>
 
@@ -373,6 +374,7 @@ export function SetupScreen() {
                 onChange={(e) => setCtx({ location: e.target.value })}
                 className="input-page"
               />
+              <p className="setup-ai-hint">{strings.aiInputHint}</p>
             </div>
 
             <div className="ctx-field ctx-field--mood">
@@ -459,10 +461,20 @@ export function SetupScreen() {
                 onChange={(e) => setCtx({ insideJoke: e.target.value })}
                 className="input-page"
               />
+              <p className="setup-ai-hint">{strings.aiInputHint}</p>
             </div>
           </div>
 
           <p className="setup-context-note">{strings.setupContextNote}</p>
+
+          <label className="setup-age-confirm">
+            <input
+              type="checkbox"
+              checked={settings.adultsConfirmed}
+              onChange={(e) => setSetting('adultsConfirmed', e.target.checked)}
+            />
+            <span>{strings.adultsConfirmLabel}</span>
+          </label>
 
           <div className="setup-nav-row">
             <button
@@ -474,9 +486,9 @@ export function SetupScreen() {
             </button>
             <button
               type="button"
-              className={`btn-begin${!isLoading ? ' ready' : ''}`}
+              className={`btn-begin${!isLoading && settings.adultsConfirmed ? ' ready' : ''}`}
               onClick={() => void generateStories()}
-              disabled={isLoading}
+              disabled={isLoading || !settings.adultsConfirmed}
               aria-label={isLoading ? strings.loading : strings.generateStoryBtn}
             >
               {isLoading ? strings.loading : strings.generateStoryBtn}
