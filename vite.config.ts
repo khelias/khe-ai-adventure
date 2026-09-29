@@ -11,6 +11,9 @@ export default defineConfig(({ command }) => {
   return {
     base: command === 'build' ? '/adventure/' : '/',
     plugins: [react(), tailwindcss()],
+    build: {
+      license: { fileName: 'third-party-licenses.md' },
+    },
     server: {
       proxy: {
         // Dev-time proxy so the V1 API path works against the live homelab
