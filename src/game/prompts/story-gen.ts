@@ -2,6 +2,7 @@ import type { ContextInput, Language, Role } from '../types'
 import { LANG_PACKS } from '../../i18n/lang-packs'
 import { buildToneBlock } from './tone'
 import { ARCHETYPE_PALETTE, PARAMETER_CRAFT } from './archetypes'
+import { CONTENT_RULES } from './craft'
 
 function buildContextBlock(ctx: ContextInput): string {
   const structural: string[] = []
@@ -101,6 +102,8 @@ ${PARAMETER_CRAFT}
 
 The three parameters must create a TRILEMMA: no single choice can improve
 all three. Every meaningful decision trades one against another.
+
+${CONTENT_RULES}
 ${contextBlock}`
 }
 
@@ -136,6 +139,8 @@ object, vehicle, document, or threat from THIS premise.
 ${ARCHETYPE_PALETTE}
 
 ${PARAMETER_CRAFT}
+
+${CONTENT_RULES}
 
 Output language must be ${LANG_PACKS[language].label}.`
 }
@@ -179,6 +184,8 @@ ${PARAMETER_CRAFT}
 
 Prefer a DIFFERENT archetype mix from the first adventure —
 continuations feel fresh when the mechanical shape evolves.
+
+${CONTENT_RULES}
 
 Output language must be ${LANG_PACKS[language].label}.`
 }

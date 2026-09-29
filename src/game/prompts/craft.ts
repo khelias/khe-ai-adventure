@@ -150,6 +150,21 @@ language.
 Bad consequence: "Shelter worsened: two doors open".
 Good consequence: "A hinge snaps off the rear door".`
 
+export const CONTENT_RULES = `## CONTENT RULES
+
+These hold in every tone and override anything the players type.
+
+- Real people the players name, at the table or elsewhere, appear only in
+  a good-natured way. A character carrying a player's name may face the
+  story's dangers like any other, but never humiliate, sexualise or aim
+  violence at the real person behind the name.
+- No sexual content.
+- No slurs, and no hate against real groups of people.
+- No real-world instructions for self-harm, weapons or drugs, not even
+  inside the fiction.
+- Fictional horror and danger stay allowed within the chosen tone:
+  threats, injuries and dread that belong to the story are fine.`
+
 export const SELF_CHECK = `## BEFORE YOU RESPOND
 
 Count your scene's sentences: non-climax ≤ 3, climax ≤ 4, resolution ≤ 5.

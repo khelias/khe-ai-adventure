@@ -1,7 +1,7 @@
 import type { Choice, ContextInput, Language, Parameter, Role } from '../types'
 import { LANG_PACKS } from '../../i18n/lang-packs'
 import { buildToneBlock } from './tone'
-import { SCENE_CRAFT, CHOICES_CRAFT, PARAMETER_MOVEMENT, SELF_CHECK } from './craft'
+import { SCENE_CRAFT, CHOICES_CRAFT, PARAMETER_MOVEMENT, CONTENT_RULES, SELF_CHECK } from './craft'
 import { TURN_CONTRACT } from './contract'
 import { ARCHETYPE_BEHAVIORS } from './archetypes'
 import { getStoryPhase, phaseInstruction } from './phases'
@@ -118,8 +118,8 @@ export function turnPrompt(args: {
   // ---- SYSTEM PROMPT ----
   //
   // Structure: role → story & characters → craft (scene/choices/parameter)
-  // → contract → phase → tone → self-check → few-shot. Pure craft; no
-  // meta-talk about the game client.
+  // → contract → phase → tone → content rules → self-check → few-shot.
+  // Pure craft; no meta-talk about the game client.
   const system = `${pack.instruction}
 ${toneBlock}
 ## ROLE
@@ -156,6 +156,8 @@ ${CHOICES_CRAFT}
 ${PARAMETER_MOVEMENT}
 
 ${TURN_CONTRACT}
+
+${CONTENT_RULES}
 
 ${SELF_CHECK}${exampleBlock}`
 
