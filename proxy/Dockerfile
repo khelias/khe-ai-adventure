@@ -16,7 +16,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json server.js et-style-guide.js ./
+COPY package.json server.js limits.js et-style-guide.js ./
 
 USER node
 EXPOSE 3000

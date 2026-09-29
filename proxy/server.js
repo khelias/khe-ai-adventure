@@ -1,6 +1,7 @@
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const { ET_STYLE_GUIDE } = require('./et-style-guide');
+const { createUsageLimiter, parsePositiveInt, tokenCountFromUsage } = require('./limits');
 const crypto = require('crypto');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -37,8 +38,6 @@ function resolveModel(provider, requested) {
 
 const UPSTREAM_TIMEOUT_MS = 115_000; // slightly under nginx proxy_read_timeout (120s)
 const APPROX_CHARS_PER_TOKEN = 4;
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 
 const INPUT_BUDGETS = {
   default: { promptChars: 14_000, systemPromptChars: 0, totalChars: 14_000, approxTokens: 3_500 },
@@ -48,13 +47,16 @@ const INPUT_BUDGETS = {
   turnSchema: { promptChars: 18_000, systemPromptChars: 24_000, totalChars: 38_000, approxTokens: 9_500 },
 };
 
+// globalTokensPerDay is a process-wide ceiling across every visitor. Its
+// default is an unverified starting value; the provider-side quota is the
+// real ceiling.
 const USAGE_LIMITS = {
   requestsPerHour: parsePositiveInt(process.env.PROXY_MAX_REQUESTS_PER_HOUR, 80),
   tokensPerHour: parsePositiveInt(process.env.PROXY_MAX_TOKENS_PER_HOUR, 300_000),
   tokensPerDay: parsePositiveInt(process.env.PROXY_MAX_TOKENS_PER_DAY, 1_200_000),
+  globalTokensPerDay: parsePositiveInt(process.env.PROXY_MAX_TOKENS_GLOBAL_PER_DAY, 5_000_000),
 };
-const usageByClient = new Map();
-let lastUsagePruneAt = 0;
+const usageLimiter = createUsageLimiter(USAGE_LIMITS);
 
 if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
   console.error('FATAL: at least one of GEMINI_API_KEY or ANTHROPIC_API_KEY must be set');
@@ -62,8 +64,11 @@ if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
 }
 
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
+// The key goes in a header, not the query string, so it never lands in a URL
+// that an error, a trace or an intermediary might log.
 const geminiUrl = (model) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+const geminiHeaders = () => ({ 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY });
 
 const app = express();
 app.use(express.json({ 
@@ -85,9 +90,9 @@ app.use(express.json({
 // 3. Rate limit: enforced by nginx (see nginx.conf) using CF-Connecting-IP.
 // 4. Input budgets: reject oversized prompts/system prompts before a provider
 //    call. The body limit is still 1 MB, but valid game prompts are far smaller.
-// 5. Per-client usage budgets: an in-memory hourly/daily token counter limits
-//    repeated valid calls from the same visitor/IP. This is a cost backstop,
-//    not a billing-grade quota system.
+// 5. Usage budgets (limits.js): in-memory hourly/daily token counters per
+//    visitor (IPv6 keyed on its /64) plus one global daily counter. This is a
+//    cost backstop, not a billing-grade quota system.
 //
 // Hashes are SHA-256 over a canonicalized JSON representation of the schema
 // object sent by the frontend. This is stricter than checking top-level keys:
@@ -133,11 +138,6 @@ function schemaHash(schema) {
 
 function schemaLabel(schema) {
   return ALLOWED_SCHEMA_HASHES.get(schemaHash(schema)) || null;
-}
-
-function parsePositiveInt(value, fallback) {
-  const parsed = Number.parseInt(value || '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function estimateTokensForText(text) {
@@ -190,94 +190,6 @@ function budgetExceededError(validation) {
     received: validation.received,
   };
   return err;
-}
-
-function clientUsageKey(req) {
-  const cfIp = req.get('cf-connecting-ip');
-  if (cfIp) return `cf:${cfIp}`;
-  const forwarded = (req.get('x-forwarded-for') || '').split(',')[0].trim();
-  if (forwarded) return `xff:${forwarded}`;
-  const realIp = req.get('x-real-ip');
-  if (realIp) return `real:${realIp}`;
-  return `socket:${req.ip || req.socket?.remoteAddress || 'unknown'}`;
-}
-
-function pruneUsageBuckets(now) {
-  if (now - lastUsagePruneAt < 60_000) return;
-  lastUsagePruneAt = now;
-  for (const [key, bucket] of usageByClient.entries()) {
-    if (bucket.dayResetAt <= now) usageByClient.delete(key);
-  }
-}
-
-function usageBucketFor(key, now) {
-  let bucket = usageByClient.get(key);
-  if (!bucket || bucket.dayResetAt <= now) {
-    bucket = {
-      hourResetAt: now + HOUR_MS,
-      dayResetAt: now + DAY_MS,
-      hourRequests: 0,
-      dayRequests: 0,
-      hourTokens: 0,
-      dayTokens: 0,
-    };
-    usageByClient.set(key, bucket);
-  } else if (bucket.hourResetAt <= now) {
-    bucket.hourResetAt = now + HOUR_MS;
-    bucket.hourRequests = 0;
-    bucket.hourTokens = 0;
-  }
-  return bucket;
-}
-
-function reserveClientBudget(req, estimatedTokens) {
-  const now = Date.now();
-  pruneUsageBuckets(now);
-  const key = clientUsageKey(req);
-  const bucket = usageBucketFor(key, now);
-  const over = [];
-  if (bucket.hourRequests + 1 > USAGE_LIMITS.requestsPerHour) {
-    over.push(`requestsPerHour ${bucket.hourRequests + 1}/${USAGE_LIMITS.requestsPerHour}`);
-  }
-  if (bucket.hourTokens + estimatedTokens > USAGE_LIMITS.tokensPerHour) {
-    over.push(`tokensPerHour ${bucket.hourTokens + estimatedTokens}/${USAGE_LIMITS.tokensPerHour}`);
-  }
-  if (bucket.dayTokens + estimatedTokens > USAGE_LIMITS.tokensPerDay) {
-    over.push(`tokensPerDay ${bucket.dayTokens + estimatedTokens}/${USAGE_LIMITS.tokensPerDay}`);
-  }
-  if (over.length > 0) {
-    const err = new Error(`usage budget exceeded: ${over.join('; ')}`);
-    err.status = 429;
-    err.publicBody = {
-      error: 'Usage budget exceeded',
-      details: over,
-      limits: USAGE_LIMITS,
-    };
-    throw err;
-  }
-  bucket.hourRequests += 1;
-  bucket.dayRequests += 1;
-  bucket.hourTokens += estimatedTokens;
-  bucket.dayTokens += estimatedTokens;
-  return { key, estimatedTokens };
-}
-
-function tokenCountFromUsage(tokens) {
-  if (!tokens || typeof tokens !== 'object') return 0;
-  if (Number.isFinite(tokens.total) && tokens.total > 0) return Math.ceil(tokens.total);
-  return ['in', 'out', 'thoughts'].reduce((sum, key) => {
-    const value = tokens[key];
-    return Number.isFinite(value) && value > 0 ? sum + Math.ceil(value) : sum;
-  }, 0);
-}
-
-function adjustClientBudget(reservation, actualTokens) {
-  if (!reservation || !Number.isFinite(actualTokens) || actualTokens <= 0) return;
-  const bucket = usageByClient.get(reservation.key);
-  if (!bucket) return;
-  const delta = actualTokens - reservation.estimatedTokens;
-  bucket.hourTokens = Math.max(0, bucket.hourTokens + delta);
-  bucket.dayTokens = Math.max(0, bucket.dayTokens + delta);
 }
 
 // Allowed origins for the game UI. Localhost entries let `npm run dev`
@@ -361,12 +273,12 @@ app.post('/generate', async (req, res) => {
         extraPrompt,
       });
       if (!budget.ok) throw budgetExceededError(budget);
-      const reservation = reserveClientBudget(req, budget.received.approxTokens);
+      const reservation = usageLimiter.reserveClientBudget(req, budget.received.approxTokens);
       const fullPrompt = prompt + extraPrompt;
       const result = provider === 'claude'
         ? await callClaude({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel })
         : await callGemini({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel });
-      adjustClientBudget(reservation, tokenCountFromUsage(result.tokens));
+      usageLimiter.adjustClientBudget(reservation, tokenCountFromUsage(result.tokens));
       return result;
     };
 
@@ -457,10 +369,13 @@ app.post('/generate', async (req, res) => {
     }
     let editorMs = 0;
     let editorApplied = false;
+    let editorTokens = null;
     if (!isTurnShape && language === 'et' && GEMINI_API_KEY) {
       const te = Date.now();
       try {
-        editorApplied = await estonianStructuredTextEditorPass(result.data);
+        const pass = await estonianStructuredTextEditorPass(result.data);
+        editorApplied = pass.applied;
+        editorTokens = pass.tokens;
       } catch (e) {
         console.warn(`editor-pass structured text failed (continuing with unedited): ${e.message || e}`);
       }
@@ -471,8 +386,9 @@ app.post('/generate', async (req, res) => {
       if (language === 'et' && GEMINI_API_KEY) {
         const te = Date.now();
         try {
-          await estonianEditorPass(result.data);
-          editorApplied = true;
+          const pass = await estonianEditorPass(result.data);
+          editorApplied = pass.applied;
+          editorTokens = pass.tokens;
         } catch (e) {
           console.warn(`editor-pass failed (continuing with unedited): ${e.message || e}`);
         }
@@ -484,7 +400,7 @@ app.post('/generate', async (req, res) => {
     const cacheHit = result.cacheHit;
     const tokens = result.tokens || { in: 0, out: 0 };
     console.log(
-      `proxy ok: schema=${knownSchema} provider=${provider} model=${result.model} ms=${ms} in=${tokens.in} out=${tokens.out}${tokens.thoughts ? ` thoughts=${tokens.thoughts}` : ''}${tokens.total ? ` total=${tokens.total}` : ''}${cacheHit != null ? ` cache=${cacheHit}` : ''}${editorApplied ? ` editor=${editorMs}ms` : ''}${retried ? ` retried=${retried}` : ''}${costRetried ? ` cost-retried=${costRetried}` : ''}${coercedGameOver ? ' coerced-gameover' : ''}`,
+      `proxy ok: schema=${knownSchema} provider=${provider} model=${result.model} ms=${ms} in=${tokens.in} out=${tokens.out}${tokens.thoughts ? ` thoughts=${tokens.thoughts}` : ''}${tokens.total ? ` total=${tokens.total}` : ''}${cacheHit != null ? ` cache=${cacheHit}` : ''}${editorApplied ? ` editor=${editorMs}ms` : ''}${editorTokens != null ? ` editor_tokens=${editorTokens}` : ''}${retried ? ` retried=${retried}` : ''}${costRetried ? ` cost-retried=${costRetried}` : ''}${coercedGameOver ? ' coerced-gameover' : ''}`,
     );
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
@@ -496,7 +412,9 @@ app.post('/generate', async (req, res) => {
     // provider is already constrained to claude|gemini above, but keeping
     // request values out of the format-string position removes the question.
     console.error('proxy: error', { provider, status, message: err.message || String(err) });
-    res.status(status).json(err.publicBody || { error: err.message || 'Proxy error' });
+    // Only the proxy's own errors carry a publicBody. A provider message can
+    // echo request details or account state, so the client gets a generic one.
+    res.status(status).json(err.publicBody || { error: 'Upstream error' });
   }
 });
 
@@ -602,8 +520,8 @@ async function estonianEditorPass(turnData) {
       }
     });
   }
-  if (tasks.length === 0) return;
-  await runEditorTasks(tasks);
+  if (tasks.length === 0) return { applied: false, tokens: 0 };
+  return runEditorTasks(tasks);
 }
 
 async function estonianStructuredTextEditorPass(data) {
@@ -611,9 +529,8 @@ async function estonianStructuredTextEditorPass(data) {
   addStoryTextTasks(tasks, data);
   addCustomStoryTextTasks(tasks, data);
   addSequelTextTasks(tasks, data);
-  if (tasks.length === 0) return false;
-  await runEditorTasks(tasks);
-  return true;
+  if (tasks.length === 0) return { applied: false, tokens: 0 };
+  return runEditorTasks(tasks);
 }
 
 function addTextTask(tasks, label, text, apply, minLen = 5) {
@@ -671,15 +588,38 @@ function addParameterTextTasks(tasks, parameters, labelPrefix) {
   });
 }
 
-async function runEditorTasks(tasks) {
+// The largest legitimate request (a sequel at turn 5-8) produces about 29
+// tasks. Each task is a separate provider call outside the client budget, so
+// the count is capped.
+const EDITOR_MAX_TASKS = 40;
+const EDITOR_SYSTEM_TOKENS = Math.ceil(EDITOR_SYSTEM.length / APPROX_CHARS_PER_TOKEN);
+
+async function runEditorTasks(allTasks) {
+  let tasks = allTasks;
+  if (tasks.length > EDITOR_MAX_TASKS) {
+    console.warn(`editor-pass capped at ${EDITOR_MAX_TASKS} of ${tasks.length} tasks; the rest stay unedited`);
+    tasks = tasks.slice(0, EDITOR_MAX_TASKS);
+  }
+  // Rough cost: the system prompt per call plus the text in and out.
+  const estimatedTokens = tasks.reduce(
+    (sum, task) => sum + EDITOR_SYSTEM_TOKENS + 2 * Math.ceil(task.text.length / APPROX_CHARS_PER_TOKEN),
+    0,
+  );
+  if (!usageLimiter.hasGlobalRoom(estimatedTokens)) {
+    console.warn(`editor-pass skipped: global daily token budget has no room for ~${estimatedTokens} tokens`);
+    return { applied: false, tokens: 0 };
+  }
+
   const sharedController = new AbortController();
   const budgetTimer = setTimeout(() => sharedController.abort(), EDITOR_TOTAL_BUDGET_MS);
 
+  let tokens = 0;
   try {
     const results = await Promise.all(tasks.map(async (task) => {
       try {
-        const edited = await editorCall(task.text, sharedController.signal);
-        return { task, edited };
+        const { corrected, totalTokens } = await editorCall(task.text, sharedController.signal);
+        tokens += totalTokens;
+        return { task, edited: corrected };
       } catch (e) {
         // Per-task failure: log and leave field unedited. Don't fail the whole pass.
         console.warn(`editor-pass ${task.label} failed: ${e.message || e}`);
@@ -691,7 +631,9 @@ async function runEditorTasks(tasks) {
     }
   } finally {
     clearTimeout(budgetTimer);
+    usageLimiter.adjustGlobalBudget(tokens);
   }
+  return { applied: true, tokens };
 }
 
 async function editorCall(text, externalSignal) {
@@ -706,16 +648,17 @@ async function editorCall(text, externalSignal) {
   };
   const res = await fetch(geminiUrl(GEMINI_MODEL), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: geminiHeaders(),
     body: JSON.stringify(body),
     signal: externalSignal,
   });
   if (!res.ok) throw new Error(`editor HTTP ${res.status}`);
   const raw = await res.json();
+  const totalTokens = Number(raw?.usageMetadata?.totalTokenCount) || 0;
   const responseText = raw?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!responseText) throw new Error('editor returned empty response');
   const parsed = JSON.parse(responseText);
-  return typeof parsed.corrected === 'string' ? parsed.corrected : null;
+  return { corrected: typeof parsed.corrected === 'string' ? parsed.corrected : null, totalTokens };
 }
 
 // Game schemas were written for Gemini's responseSchema, which accepts
@@ -745,6 +688,7 @@ async function callClaude({ prompt, schema, systemPrompt, model }) {
   if (!anthropic) {
     const err = new Error('Claude not configured on this proxy');
     err.status = 503;
+    err.publicBody = { error: err.message };
     throw err;
   }
   const createParams = {
@@ -779,6 +723,7 @@ async function callGemini({ prompt, schema, systemPrompt, model }) {
   if (!GEMINI_API_KEY) {
     const err = new Error('Gemini not configured on this proxy');
     err.status = 503;
+    err.publicBody = { error: err.message };
     throw err;
   }
   const controller = new AbortController();
@@ -795,7 +740,7 @@ async function callGemini({ prompt, schema, systemPrompt, model }) {
     if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
     const upstream = await fetch(geminiUrl(geminiModel), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: geminiHeaders(),
       body: JSON.stringify(geminiBody),
       signal: controller.signal,
     });
