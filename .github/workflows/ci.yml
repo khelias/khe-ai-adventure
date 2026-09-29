@@ -61,7 +61,7 @@ jobs:
         run: npm run schema:hashes
 
       - name: Proxy syntax check
-        run: node --check proxy/server.js && node --check proxy/limits.js
+        run: node --check proxy/server.js && node --check proxy/limits.js && node --check proxy/gemini-response.js
 
   # The required check. Read-only, so the scanner never runs where a token can
   # write packages.

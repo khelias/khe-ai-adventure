@@ -2,6 +2,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const { ET_STYLE_GUIDE } = require('./et-style-guide');
 const { createUsageLimiter, parsePositiveInt, tokenCountFromUsage } = require('./limits');
+const { parseGeminiResponse } = require('./gemini-response');
 const crypto = require('crypto');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -69,6 +70,33 @@ const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY 
 const geminiUrl = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 const geminiHeaders = () => ({ 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY });
+
+// Gemini 2.5 and 3 default to no blocking at all. The audience is adult and
+// Dark mode is horror by design, so only high-probability harm is blocked.
+const GEMINI_SAFETY_SETTINGS = [
+  'HARM_CATEGORY_HARASSMENT',
+  'HARM_CATEGORY_HATE_SPEECH',
+  'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+  'HARM_CATEGORY_DANGEROUS_CONTENT',
+].map((category) => ({ category, threshold: 'BLOCK_ONLY_HIGH' }));
+
+// Thinking counts against maxOutputTokens. 8192 is unverified until the logs
+// show the largest out plus thoughts of a real turn.
+const GEMINI_MAX_OUTPUT_TOKENS = 8192;
+const EDITOR_MAX_OUTPUT_TOKENS = 4096;
+
+// The editor fixes wording and needs no reasoning. Gemini 3 models cannot turn
+// thinking off, and the lowest level differs per model (Gemini API thinking
+// docs, checked 2026-09-29); 'low' is accepted by all of them.
+const GEMINI_3_MINIMAL_THINKING = new Set(['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']);
+
+function editorThinkingConfig(model) {
+  if (model.startsWith('gemini-2.5-')) return { thinkingBudget: 0 };
+  if (model.startsWith('gemini-3')) {
+    return { thinkingLevel: GEMINI_3_MINIMAL_THINKING.has(model) ? 'minimal' : 'low' };
+  }
+  return undefined;
+}
 
 const app = express();
 app.use(express.json({ 
@@ -622,6 +650,7 @@ async function runEditorTasks(allTasks) {
         return { task, edited: corrected };
       } catch (e) {
         // Per-task failure: log and leave field unedited. Don't fail the whole pass.
+        tokens += Number(e?.totalTokens) || 0;
         console.warn(`editor-pass ${task.label} failed: ${e.message || e}`);
         return { task, edited: null };
       }
@@ -643,9 +672,13 @@ async function editorCall(text, externalSignal) {
       responseMimeType: 'application/json',
       responseSchema: EDITOR_SCHEMA,
       temperature: 0.2,
+      maxOutputTokens: EDITOR_MAX_OUTPUT_TOKENS,
     },
+    safetySettings: GEMINI_SAFETY_SETTINGS,
     systemInstruction: { parts: [{ text: EDITOR_SYSTEM }] },
   };
+  const thinkingConfig = editorThinkingConfig(GEMINI_MODEL);
+  if (thinkingConfig) body.generationConfig.thinkingConfig = thinkingConfig;
   const res = await fetch(geminiUrl(GEMINI_MODEL), {
     method: 'POST',
     headers: geminiHeaders(),
@@ -655,8 +688,14 @@ async function editorCall(text, externalSignal) {
   if (!res.ok) throw new Error(`editor HTTP ${res.status}`);
   const raw = await res.json();
   const totalTokens = Number(raw?.usageMetadata?.totalTokenCount) || 0;
-  const responseText = raw?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!responseText) throw new Error('editor returned empty response');
+  let responseText;
+  try {
+    responseText = parseGeminiResponse(raw).text;
+  } catch (e) {
+    // A blocked or truncated call is still billed.
+    e.totalTokens = totalTokens;
+    throw e;
+  }
   const parsed = JSON.parse(responseText);
   return { corrected: typeof parsed.corrected === 'string' ? parsed.corrected : null, totalTokens };
 }
@@ -735,7 +774,9 @@ async function callGemini({ prompt, schema, systemPrompt, model }) {
         responseMimeType: 'application/json',
         responseSchema: schema,
         temperature: 0.8,
+        maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
       },
+      safetySettings: GEMINI_SAFETY_SETTINGS,
     };
     if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
     const upstream = await fetch(geminiUrl(geminiModel), {
@@ -750,11 +791,7 @@ async function callGemini({ prompt, schema, systemPrompt, model }) {
       err.status = upstream.status;
       throw err;
     }
-    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new Error('Gemini returned an empty response');
-    }
-    const usageMetadata = body?.usageMetadata || {};
+    const { text, usageMetadata } = parseGeminiResponse(body);
     const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
     return {
       model: geminiModel,
