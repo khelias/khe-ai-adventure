@@ -138,7 +138,7 @@ Prompts live in `src/game/prompts/`.
 | `schemas.ts` | Canonical response schemas and `TurnResponse` |
 | `story-gen.ts` | Story, custom story, and sequel generation prompts |
 | `turn.ts` | Turn prompt composer |
-| `craft.ts` | Scene, choice, and parameter movement guidance |
+| `craft.ts` | Scene, choice, and parameter movement guidance; `CONTENT_RULES` |
 | `contract.ts` | Strict turn response shape contract |
 | `archetypes.ts` | Parameter archetypes and behavior rules |
 | `phases.ts` | Story phase calculation and phase instructions |
@@ -196,8 +196,17 @@ Controls:
 3. HMAC request signature when `API_SECRET` is configured
 4. exact schema hash allowlist
 5. schema-specific prompt/system-prompt input budgets before provider calls
-6. in-memory per-client hourly/daily request and token budgets
-7. provider API keys stored only in server-side environment
+6. in-memory per-client hourly/daily request and token budgets, IPv6 keyed on
+   its /64 (`proxy/limits.js`)
+7. an in-memory global daily token budget across all visitors
+   (`PROXY_MAX_TOKENS_GLOBAL_PER_DAY`, default 5,000,000, an unverified
+   starting value), which also counts the Estonian editor pass
+8. provider API keys stored only in server-side environment; the Gemini key
+   travels in the `x-goog-api-key` header, never in a URL
+9. Gemini `safetySettings` at `BLOCK_ONLY_HIGH`, `maxOutputTokens` on every
+   call, and blocked or truncated responses rejected with 502
+   (`proxy/gemini-response.js`)
+10. upstream provider error messages logged, never returned to the client
 
 Limitations:
 
@@ -205,8 +214,11 @@ Limitations:
   the build-time `VITE_API_SECRET`), so HMAC is a friction layer, not a true
   secret.
 - Origin can be spoofed by a determined caller.
-- Per-client usage budgets are in-memory process counters, not durable billing
-  controls. They are meant to cap repeated valid public calls between deploys.
+- Usage budgets are in-memory process counters, not durable billing controls.
+  They are meant to cap repeated valid public calls between deploys. The hard
+  ceiling on spend is the quota and budget alert set at the provider.
+- The khe-homelab compose passes no `PROXY_MAX_*` variables, so the defaults in
+  `proxy/server.js` are what runs in production.
 - The acceptable threat model is "public game endpoint with bounded game-shaped
   calls", not "untrusted general-purpose AI gateway".
 
@@ -253,7 +265,7 @@ prompts, schemas, and documentation.
 | Game mechanics | `src/game/engine.ts`, `src/game/actions.ts`, `src/game/secrets.ts` |
 | Prompt modules | `src/game/prompts/` |
 | API client | `src/api/adventure.ts` |
-| Provider proxy | `proxy/server.js` |
+| Provider proxy | `proxy/server.js`, `proxy/limits.js`, `proxy/gemini-response.js` |
 | Headless playtest | `scripts/playtest.ts` |
 
 ## Related Documents

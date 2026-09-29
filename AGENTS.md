@@ -1,7 +1,7 @@
 # khe-ai-adventure
 
-Pass-the-phone party adventure for 3-6 players: one shared device, the AI
-narrates, the group debates, the engine applies state. Live at
+Pass-the-phone party adventure for 3-6 adult players (18+): one shared
+device, the AI narrates, the group debates, the engine applies state. Live at
 games.khe.ee/adventure. This repo owns the app, proxy, prompts, contracts and
 product docs; infrastructure is in `khe-homelab`.
 
@@ -22,6 +22,10 @@ product docs; infrastructure is in `khe-homelab`.
   `web/40-adventure-config.sh` writes `API_SECRET` into `config.js`, which
   `index.html` loads before the bundle; `public/config.js` is the empty
   placeholder for dev and `ui:smoke`.
+- Fonts: Fraunces and Inter, latin and latin-ext subsets, self-hosted from
+  `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
+  `public/fonts/OFL.txt`). No request goes to Google. `vite build` writes the
+  bundled dependencies' licenses to `dist/third-party-licenses.md`.
 
 ## Commands
 
@@ -51,14 +55,23 @@ needs the same value as `VITE_API_SECRET`. It lives in
 `ssh khe@docker-vm 'cd /home/khe/homelab/services/apps/games && set -a && . ./.env && printf %s "$API_SECRET"'`
 into the variable, never into a file or the conversation.
 
-CI runs lint, build, test:unit, ui:smoke, schema:hashes and
-`node --check proxy/server.js`. CI's `Images` job also builds both images and
-scans them with Grype (`.grype.yaml`: HIGH or CRITICAL with a fix fails; an
-ignore rule's reason starts with `until YYYY-MM-DD:` and fails CI once past).
+CI runs lint, build, test:unit, ui:smoke, schema:hashes and `node --check`
+on `proxy/server.js`, `proxy/limits.js` and `proxy/gemini-response.js`. CI's
+`Images` job also builds both images and scans them with Grype
+(`.grype.yaml`: HIGH or CRITICAL with a fix fails; an ignore rule's reason
+starts with `until YYYY-MM-DD:` and fails CI once past).
 Local image check: `docker build -f web/Dockerfile .` and `docker build ./proxy`.
 
 Prompt or model changes also get a playtest; judge them by transcripts and
 proxy telemetry, not one attractive run.
+
+`ui:smoke` baselines live in `tests/__screenshots__/{darwin,linux}`. CI
+compares the linux set, so regenerate it inside
+`mcr.microsoft.com/playwright:v<version>-noble` matching the installed
+`@playwright/test`, with `npx playwright test tests/ui-smoke.spec.ts
+--update-snapshots`. `mobile-game-over.png` renders slightly differently
+from run to run, so regenerating it only adds noise; leave it unless the
+screen changed.
 
 ## Layout
 
@@ -70,13 +83,17 @@ src/
   i18n/        et + en language packs
   store/       Zustand gameStore
 proxy/
-  server.js        schema guard, origin check, rate limit, editor routing
+  server.js        schema guard, origin check, provider calls, editor routing
+  limits.js        per-client and global usage budgets, IPv6 /64 client key
+  gemini-response.js  Gemini response parsing: safety blocks, truncation
   et-style-guide.js  system prompt for the Estonian editor pass
+  *.d.ts           types for the unit tests; not shipped in the image
 web/           Dockerfile, nginx.conf, config.js entrypoint of the web image
 docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
                ui-ux, game-systems-audit; ADRs in decisions/
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts
-tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config}.test.ts
+tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,
+               proxy-limits,gemini-response}.test.ts
 ```
 
 ## Architecture invariants
@@ -100,7 +117,13 @@ tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config}.test.ts
 6. **Rate and token budgets are security controls.** `PROXY_MAX_*` bounds
    the abuse ceiling of the client-supplied system prompt
    ([ADR 0006](docs/decisions/0006-client-supplied-system-prompt.md));
-   raising them widens it. CodeQL is not required here, and its one
+   raising them widens it. Per client (IPv6 keyed on its /64):
+   `PROXY_MAX_REQUESTS_PER_HOUR` 80, `PROXY_MAX_TOKENS_PER_HOUR` 300000,
+   `PROXY_MAX_TOKENS_PER_DAY` 1200000. Across all visitors:
+   `PROXY_MAX_TOKENS_GLOBAL_PER_DAY` 5000000, an unverified starting value;
+   the provider-side quota is the real ceiling. The khe-homelab compose passes
+   no `PROXY_MAX_*` variables, so the defaults in `proxy/server.js` are what
+   runs in production. CodeQL is not required here, and its one
    `js/system-prompt-injection` alert on `proxy/server.js` is knowingly open
    per ADR 0006. A second alert is the signal worth acting on.
 
@@ -117,6 +140,25 @@ From `ROADMAP.md`:
 - Secrets stay private until the reveal.
 - Cheaper model first; an expensive one is opt-in, and only when measured.
 
+## Audience and content
+
+- **18+.** The Gemini API terms require adult users. The last setup step
+  asks for a self-declared confirmation that every player is 18 or older
+  (`Settings.adultsConfirmed`, kept in localStorage as
+  `adventureAdultsConfirmed`); the start button and `generateStories` refuse
+  without it. The footer carries the AI disclosure, the group, place and
+  detail fields say their text goes to the AI provider, and a copied story
+  ends with an AI-generated credit line. A self-declaration is not age
+  verification, and the launcher sits next to a kids' game, so the terms'
+  "likely to be accessed by" minors wording stays a residual risk.
+- **Content rules** are `CONTENT_RULES` in `src/game/prompts/craft.ts`, part of
+  the turn system prompt and all three story prompts. Gemini calls also send
+  `safetySettings` at `BLOCK_ONLY_HIGH`, and a blocked or truncated response
+  returns 502 instead of partial text (`proxy/gemini-response.js`).
+- Upstream provider error messages go only to the log; the client gets
+  `{ error: 'Upstream error' }`. The proxy's own 400, 413 and 429 errors keep
+  their detailed body.
+
 ## Estonian editor pass
 
 Estonian (`language='et'`) player-facing text (scene, choices, story and
@@ -125,6 +167,10 @@ prompt in `proxy/et-style-guide.js` (`estonianEditorPass`,
 `estonianStructuredTextEditorPass`), inside a 25 s budget
 (`EDITOR_TOTAL_BUDGET_MS`). A failure falls back to the unedited
 text; the whole response stays under nginx's 120 s `proxy_read_timeout`.
+It runs with thinking off (or at the model's lowest level), is capped at 40
+tasks, is skipped when the global day budget has no room, and its actual
+tokens count against the global budget only. The `proxy ok` log line reports
+them as `editor_tokens=<n>`.
 
 ## Deployment
 

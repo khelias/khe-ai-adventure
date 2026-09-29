@@ -25,15 +25,25 @@ What already bounds the abuse:
 - Exact canonical schema hash allowlist ([ADR 0002](./0002-proxy-and-schema-guard.md)).
 - `systemPrompt` accepted only for `turnSchema` requests, capped at 24,000 chars.
 - Per-client budgets: 80 requests/hour, 300K tokens/hour, 1.2M tokens/day, keyed
-  from `CF-Connecting-IP`.
+  from `CF-Connecting-IP` (IPv6 on its /64 since 2026-09-29).
+- Since 2026-09-29, a global budget across all visitors:
+  `PROXY_MAX_TOKENS_GLOBAL_PER_DAY`, 5M tokens/day by default, an unverified
+  starting value. It also counts the Estonian editor pass, which no per-client
+  budget covers. The khe-homelab compose sets no `PROXY_MAX_*`, so the code
+  defaults run.
+- The hard ceiling on spend is a quota and budget alert at the provider, which
+  the operator manages outside this repo; the in-memory counters reset whenever
+  the proxy restarts.
 - `adventure-proxy` publishes no ports and sits on `games-internal` only; the
   nginx container in front of it is reachable only through the Cloudflare tunnel.
 
 The residual risk is therefore bounded rather than open-ended: someone who
 extracts `VITE_API_SECRET` from the bundle can, within one IP's hourly and daily
 budget, use this proxy's provider keys as a general LLM endpoint with a system
-prompt of their choosing. That is a cost and misuse problem, not a data-exposure
-one — the proxy holds no user data, and there is no auth to subvert.
+prompt of their choosing. Rotating addresses no longer lifts that ceiling past
+the global day budget and the provider cap. That is a cost and misuse problem,
+not a data-exposure one: the proxy holds no user data, and there is no auth to
+subvert.
 
 A separate and more immediate half of the same problem was fixed in #118:
 player-typed context (`location`, `playersDesc`, `insideJoke`) used to be

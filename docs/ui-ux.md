@@ -76,12 +76,18 @@ Purpose: give the AI one optional spark and confirm the setup.
 Inputs:
 
 - one optional detail the adventure may use
+- the confirmation that every player is 18 or older, asked once per device
 
 UI notes:
 
 - The screen includes a compact review of genre, player count, length, and
   location before generation.
 - The optional detail should be one useful seed, not a full prompt brief.
+- The start button stays disabled until the 18+ confirmation is checked.
+
+The group, place and detail fields each carry a short hint that the text is
+sent to the AI provider, so the group enters only what everyone is fine with.
+The footer on every screen reads "18+ · Lugu kirjutab tehisintellekt".
 
 ## Gameplay Screens
 
@@ -141,6 +147,9 @@ The end screen should read as one conclusion:
 Players should see winners and final parameters before the long final prose.
 They should not need to click through the entire game again to understand who
 won and why.
+
+The copied full story ends with a line saying it was generated with AI and
+naming games.khe.ee/adventure.
 
 ## Parameter Rules
 

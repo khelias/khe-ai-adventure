@@ -41,9 +41,12 @@ Implementation:
   application/json` and `responseSchema`. Keep this as a hard requirement for
   every live game call.
 - **Thinking budget**: 2.5 Flash uses dynamic thinking by default, and output
-  pricing includes thinking tokens. Candidate test: set `thinkingBudget: 0`
-  for the Estonian editor pass and compare latency/quality; leave turn/story
-  calls dynamic until transcripts show it is wasteful.
+  pricing includes thinking tokens. The Estonian editor pass runs with
+  `thinkingBudget: 0` on `gemini-2.5-*` and the lowest `thinkingLevel` on
+  `gemini-3*` (`maxOutputTokens` 4096). Turn and story calls stay dynamic
+  under `maxOutputTokens` 8192, which thinking counts against; that figure is
+  unverified until the logs show the largest out plus thoughts of a real
+  turn.
 - **Implicit context caching**: Gemini 2.5 and newer models have implicit
   caching enabled by default. The turn system prompt has a stable prefix
   during one game, so we may get hits without extra code. The proxy logs

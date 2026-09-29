@@ -47,7 +47,8 @@ The proxy currently applies these checks before provider calls:
 4. `provider` must be `gemini` or `claude`.
 5. `model`, when present, must be on the allowlist for that provider.
 6. `prompt` and `systemPrompt` must fit the schema-specific input budget.
-7. The caller must fit the in-memory per-client request/token budget.
+7. The caller must fit the in-memory per-client request/token budget and the
+   global daily token budget.
 
 ## Input and usage budgets
 
@@ -63,15 +64,33 @@ telemetry replaces the estimate after successful calls when available.
 | `turnSchema` | 18,000 | 24,000 | 38,000 | 9,500 |
 
 Per-client usage is keyed from `CF-Connecting-IP`, then `X-Forwarded-For`,
-then `X-Real-IP`, then the socket address. Defaults:
+then `X-Real-IP`, then the socket address. An IPv6 address is keyed on its
+/64. Defaults:
 
 - 80 accepted provider attempts per hour
 - 300,000 approximate/actual provider tokens per hour
 - 1,200,000 approximate/actual provider tokens per day
+- across all clients, 5,000,000 approximate/actual provider tokens per day,
+  an unverified starting value
 
 These counters are an in-memory cost backstop. They reset when the proxy
 restarts and can be tuned with `PROXY_MAX_REQUESTS_PER_HOUR`,
-`PROXY_MAX_TOKENS_PER_HOUR`, and `PROXY_MAX_TOKENS_PER_DAY`.
+`PROXY_MAX_TOKENS_PER_HOUR`, `PROXY_MAX_TOKENS_PER_DAY`, and
+`PROXY_MAX_TOKENS_GLOBAL_PER_DAY`. The khe-homelab compose sets none of them,
+so these defaults are what runs. The Estonian editor pass counts against the
+global budget only, is capped at 40 calls per request, and is skipped when the
+global budget has no room.
+
+## Error responses
+
+- 400, 413 and 429 come from the proxy itself and keep a detailed body. A 429
+  lists the exceeded limits in `details`; the global limit appears only as
+  `globalTokensPerDay`, without figures.
+- 502 `{ error: 'Response blocked by safety filter' }`: Gemini blocked the
+  prompt or stopped for SAFETY, PROHIBITED_CONTENT, BLOCKLIST or SPII.
+- 502 `{ error: 'Response too long' }`: Gemini hit `maxOutputTokens`.
+- Any other provider failure returns its status with
+  `{ error: 'Upstream error' }`; the provider's message is only logged.
 
 The legacy `/gemini` passthrough endpoint has been removed. It bypassed the
 HMAC and exact schema guard, so old cached frontends must refresh to use
