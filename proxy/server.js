@@ -91,6 +91,8 @@ const EDITOR_MAX_OUTPUT_TOKENS = 4096;
 const GEMINI_3_MINIMAL_THINKING = new Set(['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']);
 
 function editorThinkingConfig(model) {
+  // 2.5 Pro cannot turn thinking off; 128 is its lowest budget.
+  if (model.startsWith('gemini-2.5-pro')) return { thinkingBudget: 128 };
   if (model.startsWith('gemini-2.5-')) return { thinkingBudget: 0 };
   if (model.startsWith('gemini-3')) {
     return { thinkingLevel: GEMINI_3_MINIMAL_THINKING.has(model) ? 'minimal' : 'low' };
@@ -303,9 +305,15 @@ app.post('/generate', async (req, res) => {
       if (!budget.ok) throw budgetExceededError(budget);
       const reservation = usageLimiter.reserveClientBudget(req, budget.received.approxTokens);
       const fullPrompt = prompt + extraPrompt;
-      const result = provider === 'claude'
-        ? await callClaude({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel })
-        : await callGemini({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel });
+      let result;
+      try {
+        result = provider === 'claude'
+          ? await callClaude({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel })
+          : await callGemini({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel });
+      } catch (e) {
+        usageLimiter.adjustClientBudget(reservation, Number(e?.totalTokens) || 0);
+        throw e;
+      }
       usageLimiter.adjustClientBudget(reservation, tokenCountFromUsage(result.tokens));
       return result;
     };
@@ -791,11 +799,21 @@ async function callGemini({ prompt, schema, systemPrompt, model }) {
       err.status = upstream.status;
       throw err;
     }
-    const { text, usageMetadata } = parseGeminiResponse(body);
+    let text;
+    let usageMetadata;
+    let data;
+    try {
+      ({ text, usageMetadata } = parseGeminiResponse(body));
+      data = JSON.parse(text);
+    } catch (e) {
+      // A blocked, truncated or unparsable response is still billed.
+      e.totalTokens = Number(body?.usageMetadata?.totalTokenCount) || 0;
+      throw e;
+    }
     const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
     return {
       model: geminiModel,
-      data: JSON.parse(text),
+      data,
       cacheHit: cachedTokens > 0 ? `${cachedTokens}tok` : null,
       tokens: {
         in: usageMetadata.promptTokenCount || 0,
