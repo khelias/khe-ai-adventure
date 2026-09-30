@@ -234,7 +234,6 @@ flowchart LR
     CI["GitHub Actions CI<br/>build, scan, publish"]
     GHCR["GHCR<br/>web + proxy images"]
     Homelab["khe-homelab<br/>digest pins"]
-    Renovate["Renovate"]
     Nginx["games nginx container"]
     Web["adventure-web container"]
     Proxy["adventure-proxy container"]
@@ -242,8 +241,7 @@ flowchart LR
     Dev -->|"push main"| Repo
     Repo --> CI
     CI -->|"sha- and main tags"| GHCR
-    Renovate -->|"grouped PR, automerge"| Homelab
-    GHCR -.->|"new digest"| Renovate
+    CI -->|"pin PR via App, automerge"| Homelab
     Homelab -->|"deploy on merge"| Nginx
     Nginx -->|"/adventure/"| Web
     Nginx -->|"/adventure/api/"| Proxy

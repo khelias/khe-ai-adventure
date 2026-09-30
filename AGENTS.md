@@ -180,10 +180,17 @@ SBOM, provenance and an attestation, then moves both `main` tags in one step
 (khe-meta ADR-008). Nothing in this repo touches the VM.
 
 khe-homelab pins both images as `:main@sha256:<digest>` in
-`services/apps/games/docker-compose.yml`. Renovate there sees the new `main`
-digests and opens one grouped PR that automerges, and the merge is the
-deploy. So a push here goes live hours later, not at once.
+`services/apps/games/docker-compose.yml`. After `publish`, the `Pin homelab`
+job runs `scripts/pin-homelab.sh` with a token of the `khe-adventure-pins`
+GitHub App, whose key is in the `homelab-pin` environment (main only). It
+force-pushes the new pair to `deploy/khe-ai-adventure` there, opens the PR if
+none is open and turns on auto-merge. homelab's `validate.yml` lets the App
+change only those two digests and checks every pin's attestation, and the
+merge is the deploy: a push here is live in minutes. The job skips with a
+notice when the secrets are missing, when GHCR's `main` is already a newer
+commit, or when a pin is a `sha-` rollback.
 
 Rollback is a khe-homelab change: pin both images to the same
 `sha-<full commit>@sha256:<digest>` of a known good commit, never one image
-alone (invariant 2). The procedure is in khe-homelab's `AGENTS.md`.
+alone (invariant 2). The pin job then leaves the pins alone until they are
+back on `:main@`. The procedure is in khe-homelab's `AGENTS.md`.

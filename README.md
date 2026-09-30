@@ -62,8 +62,8 @@ in [AGENTS.md](AGENTS.md).
 
 Every push to `main` publishes a web image and a proxy image to GitHub's
 container registry. [khe-homelab](https://github.com/khelias/khe-homelab) pins
-both and runs them in its games stack, and Renovate moves those pins, so the
-deploy is a merge there. This repo owns the app, proxy, prompts, contracts and
+both and runs them in its games stack, and CI moves those pins in an
+auto-merging PR there, so a push is live in minutes. This repo owns the app, proxy, prompts, contracts and
 product docs.
 
 ## More

@@ -164,6 +164,8 @@ jobs:
     concurrency:
       group: publish-main
       cancel-in-progress: false
+    outputs:
+      moved: ${{ steps.move.outputs.moved }}
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       IMAGE_BASE: ghcr.io/khelias/khe-ai-adventure
@@ -304,8 +306,9 @@ jobs:
           create-storage-record: false
 
       # Both main tags move in this one step, after both sha- tags exist, so a
-      # Renovate run sees the old pair or the new pair except for about a second.
+      # reader sees the old pair or the new pair except for about a second.
       - name: Move both main tags
+        id: move
         if: steps.tip.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -348,3 +351,102 @@ jobs:
             fi
             echo "- \`$IMAGE_BASE-$part:main@$main\`" >> "$GITHUB_STEP_SUMMARY"
           done
+          echo "moved=true" >> "$GITHUB_OUTPUT"
+
+  # Opens the khe-homelab pin PR with auto-merge through the khe-adventure-pins
+  # App (khe-meta ADR-008). Its key is in the homelab-pin environment, which
+  # only main can use; homelab's validate.yml limits what the App may change.
+  pin:
+    name: Pin homelab
+    needs: publish
+    if: needs.publish.outputs.moved == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: homelab-pin
+    permissions:
+      contents: read
+    concurrency:
+      group: pin-homelab
+      cancel-in-progress: false
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      IMAGE_BASE: ghcr.io/khelias/khe-ai-adventure
+
+    steps:
+      # secrets.* cannot appear in if:, so later steps gate on this output.
+      - name: Check for the App secrets
+        id: secrets
+        env:
+          CLIENT_ID: ${{ secrets.HOMELAB_PIN_CLIENT_ID }}
+          PRIVATE_KEY: ${{ secrets.HOMELAB_PIN_PRIVATE_KEY }}
+        run: |
+          if [ -n "$CLIENT_ID" ] && [ -n "$PRIVATE_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::homelab-pin has no App secrets; the homelab pins are not moved"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A re-run of an older commit must not pin backwards. Checking GHCR's
+      # main rather than the branch tip also pins this commit when a newer one
+      # landed meanwhile but has not published yet.
+      - name: Stop unless GHCR main is this commit
+        id: current
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          current=true
+          for part in proxy web; do
+            main=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:main" --format '{{json .Manifest}}' | jq -r .digest)
+            mine=$(docker buildx imagetools inspect "$IMAGE_BASE-$part:sha-$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+            if [ "$main" != "$mine" ]; then
+              echo "::notice::$part main is $main, not sha-$GITHUB_SHA ($mine); a newer run pins"
+              current=false
+            fi
+          done
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+
+      - name: Mint the App token
+        id: app
+        if: steps.current.outputs.current == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.HOMELAB_PIN_CLIENT_ID }}
+          private-key: ${{ secrets.HOMELAB_PIN_PRIVATE_KEY }}
+          owner: khelias
+          repositories: khe-homelab
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout
+        if: steps.current.outputs.current == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Checkout khe-homelab
+        if: steps.current.outputs.current == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: khelias/khe-homelab
+          token: ${{ steps.app.outputs.token }}
+          path: homelab
+
+      # The noreply address is assembled here so no file carries it.
+      - name: Commit as the App
+        if: steps.current.outputs.current == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          id=$(gh api "users/${SLUG}[bot]" --jq .id)
+          domain=users.noreply.github.com
+          git -C homelab config user.name "${SLUG}[bot]"
+          git -C homelab config user.email "${id}+${SLUG}[bot]@${domain}"
+
+      - name: Open the pin PR
+        if: steps.current.outputs.current == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: scripts/pin-homelab.sh homelab "$GITHUB_SHA"
