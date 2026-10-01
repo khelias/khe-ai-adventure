@@ -214,9 +214,10 @@ Definition Of "Good Enough" a measurement instead of a feeling.
 - **What:** a third proxy provider that calls the homelab's Ollama, admitted
   to the live path only if it passes the same benchmark and a latency bar.
   If it did, the per-game API cost of the main calls would drop to zero.
-- **Builds on:** Ollama already runs in `khe-homelab` (`services/ai/ollama`):
-  CPU-only on an i7-12700K with no discrete GPU, capped at 10G RAM and 6 CPUs,
-  with `qwen2.5:7b` loaded. Provider selection is
+- **Builds on:** Ollama ran in `khe-homelab` (`services/ai/ollama`) until
+  2026-10-01 and was removed for lack of use; its compose file is in
+  `khe-homelab` git history. It ran CPU-only on an i7-12700K with no discrete
+  GPU, capped at 10G RAM and 6 CPUs, with `qwen2.5:7b` loaded. Provider selection is
   already centralized in the proxy (ADR 0001), so the frontend would not change.
 - **Honest limits:** a turn is one full JSON object (scene, three choices with
   `expectedChanges`, consequence text) and the UI waits for the whole object,
@@ -227,15 +228,17 @@ Definition Of "Good Enough" a measurement instead of a feeling.
   a local main model with a Gemini editor is cheaper, not free. Estonian
   quality of 7B-class open models is the larger unknown and is what the
   benchmark answers. Two games at once would queue on the same model.
-- **First measurable step:** run the benchmark prompt set directly against
-  Ollama, outside the proxy, and record time to a complete turn object, schema
+- **First measurable step:** re-add the Ollama stack to `khe-homelab`
+  temporarily from git history, then run the benchmark prompt set directly
+  against it, outside the proxy, and record time to a complete turn object, schema
   validity rate and benchmark score for `qwen2.5:7b` and any open model that
   fits the 10G cap. Compare with the per-turn times the existing transcripts
   already record for Gemini. No live-path change.
 - **Waits for:** the benchmark. The Infrastructure rule above (local stays out
   of the live path until competitive) stays in force; this gives it a
   measurement. Reaching Ollama means `adventure-proxy` joins the
-  `ai-internal` network, a `khe-homelab` change.
+  `ai-internal` network, a `khe-homelab` change; that network went with
+  Ollama and has to be recreated.
 - **Main risk or cost:** the likely first answer is "not good enough on CPU",
   which is still a useful benchmark row. The realistic enabler is the GPU on
   the `khe-homelab` hardware wishlist, and that purchase has to beat the API
