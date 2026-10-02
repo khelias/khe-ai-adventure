@@ -47,5 +47,11 @@ Schema changes now require an explicit coupling step:
 HMAC is documented as a friction layer, not a true browser-side secret, because
 `VITE_API_SECRET` ships in the frontend bundle.
 
+Update 2026-10-02: production no longer bakes the key into the bundle. The web
+image writes it into a runtime `config.js` (`window.__ADVENTURE_CONFIG__`,
+`web/40-adventure-config.sh`) and the frontend reads that first
+(`src/api/runtimeConfig.ts`); `VITE_API_SECRET` is only the `npm run dev`
+fallback. The key is still visible to any browser, so HMAC stays friction.
+
 If more providers, tools, or caching modes are added, `proxy/server.js` should be
 split into smaller provider, guard, editor, and telemetry modules.

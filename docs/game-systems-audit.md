@@ -12,7 +12,7 @@ and changes that affect fairness are made deliberately.
 | Surface | Current owner | Notes |
 |---|---|---|
 | Genres | `src/game/types.ts`, `src/components/SetupScreen.tsx`, translations | Six fixed genres. Genre currently affects copy and prompt input, but not deterministic mechanics. |
-| Durations | `src/game/types.ts`, `src/game/engine.ts`, setup UI | `Short=8`, `Medium=15`, `Long=22` max turns. |
+| Durations | `src/game/types.ts`, `src/game/engine.ts`, setup UI | `Short=8`, `Medium=15`, `Long=20` max turns. |
 | Providers | `src/game/types.ts`, `src/store/gameStore.ts` | `gemini` default, `claude` hidden advanced option. |
 | Parameter archetypes | `src/game/types.ts`, `src/game/prompts/archetypes.ts` | AI declares the archetype; app uses it for icons and secret eligibility. |
 | Secret archetypes | `src/game/types.ts`, `src/game/secrets.ts`, translations | App-owned. AI does not know private goals. |

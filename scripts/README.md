@@ -42,8 +42,13 @@ Transcripts land in `playtest-transcripts/<timestamp>__<genre>-<duration>-<strat
 | `--players` | `3` | Role count |
 | `--language` | `et` | `et` \| `en` |
 | `--provider` | `gemini` | `gemini` \| `claude` — which model handles story generation and turns |
+| `--model` | proxy default | Overrides the provider's model for this run; must be on the proxy's `MODEL_ALLOWLIST`. Recorded in the transcript header. |
 | `--strategy` | `balanced` | See below |
 | `--endpoint` | `https://games.khe.ee/adventure/api/generate` | Override for local dev |
+| `--location` | empty | Group context: physical setting |
+| `--players-desc` | empty | Group context: who is at the table |
+| `--vibe` | empty | Group context: tone steer |
+| `--inside-joke` | empty | Group context: easter egg |
 | `--skip-parametric-end` | off | Continue past the engine's auto-end when multiple parameters collapse. Useful for testing late-phase prompts. |
 | `--out` | auto | Override transcript path |
 

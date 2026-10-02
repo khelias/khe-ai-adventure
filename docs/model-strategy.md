@@ -1,6 +1,6 @@
 # AI Adventure Engine model strategy
 
-Last reviewed: 2026-04-25
+Last reviewed: 2026-10-02
 
 ## Product goal
 
@@ -26,7 +26,7 @@ Why:
 - It supports a 1M token context window, thinking, function calling, and structured outputs.
 - It is fast enough for table play.
 - The existing proxy already uses Gemini for the Estonian editor pass, so keeping the main game on Gemini avoids mixing an expensive generator with a cheap editor.
-- It is stable, while the currently interesting Gemini 3 options are still preview models.
+- When it was chosen (April 2026) the Gemini 3 options were still preview models. Newer Gemini models are now on the proxy's allowlist as candidates (see below); whether one replaces it is for the measurement pass to decide.
 
 Implementation:
 
@@ -42,8 +42,9 @@ Implementation:
   every live game call.
 - **Thinking budget**: 2.5 Flash uses dynamic thinking by default, and output
   pricing includes thinking tokens. The Estonian editor pass runs with
-  `thinkingBudget: 0` on `gemini-2.5-*` and the lowest `thinkingLevel` on
-  `gemini-3*` (`maxOutputTokens` 4096). Turn and story calls stay dynamic
+  `thinkingBudget: 0` on `gemini-2.5-*`, `thinkingBudget: 128` on
+  `gemini-2.5-pro` (it cannot turn thinking off, 128 is its lowest budget)
+  and the lowest `thinkingLevel` on `gemini-3*` (`maxOutputTokens` 4096). Turn and story calls stay dynamic
   under `maxOutputTokens` 8192, which thinking counts against; that figure is
   unverified until the logs show the largest out plus thoughts of a real
   turn.
@@ -73,16 +74,41 @@ Why not default:
 
 ## Candidate models
 
-| Model | Status | Input / Output per 1M tokens | Notes |
+A request to the proxy may carry `model`, which overrides the provider's
+configured model for that call (`0c5765f`). The value is matched against
+`MODEL_ALLOWLIST` in `proxy/server.js`; the configured `GEMINI_MODEL` or
+`CLAUDE_MODEL` is always allowed, anything else returns 400 with the allowed
+list. The Estonian editor pass ignores the override and always runs on
+`GEMINI_MODEL`. To make a model testable, add it to the allowlist first.
+
+### Current candidates
+
+The allowlist as it stands. Prices relative to 2.5 Flash are from the
+default-model review that seeded it (`0c5765f`); check the provider pricing
+pages before acting on them.
+
+| Model | Status | Price | Notes |
 |---|---:|---:|---|
-| `gemini-2.5-flash` | Default | $0.30 / $2.50 | Best current fit for cheap, fast, structured game turns. |
+| `gemini-2.5-flash` | Default | $0.30 / $2.50 per 1M tokens | Proxy default (`GEMINI_MODEL`). |
+| `gemini-3.5-flash-lite` | Candidate | Same as 2.5 Flash | Three generations newer at the same price. |
+| `gemini-3.8-flash` | Candidate | About 2.2x 2.5 Flash | Promotional pricing until 2026-12-31. |
+| `claude-sonnet-5` | Opt-in quality candidate | Not recorded here | Newer Sonnet on the opt-in Claude path. |
+| `claude-sonnet-4-6` | Opt-in quality | $3 / $15 per 1M tokens | Proxy Claude default (`CLAUDE_MODEL`). |
+
+### Earlier candidates (April 2026 review, history)
+
+Kept for the reasoning; prices are from April 2026. None of these is on the
+allowlist, so the proxy rejects them as an override. The `gpt-*` rows would
+also need an OpenAI provider in the proxy.
+
+| Model | Status then | Input / Output per 1M tokens | Notes |
+|---|---:|---:|---|
 | `gemini-2.5-flash-lite` | Cost test | $0.10 / $0.40 | Cheapest stable option. Test if volume cost becomes the main issue; likely weaker prose and fewer interesting consequences. |
 | `gemini-2.0-flash-lite` | Cost floor test | $0.075 / $0.30 | Cheaper, but older and less aligned with current structured/thinking/caching strategy. Only test if 2.5 Flash-Lite is still too expensive. |
-| `gemini-3.1-flash-lite-preview` | Candidate | $0.25 / $1.50 | New preview option that may be cheaper than 2.5 Flash with stronger quality. Do not use as live default until schema retries and Estonian playtests are clean. |
-| `gemini-3-flash-preview` | Candidate | $0.50 / $3.00 | Newer preview model with better capability claims, but it is more expensive than 2.5 Flash and preview-risky. |
+| `gemini-3.1-flash-lite-preview` | Candidate | $0.25 / $1.50 | Preview option that may be cheaper than 2.5 Flash with stronger quality. Do not use as live default until schema retries and Estonian playtests are clean. |
+| `gemini-3-flash-preview` | Candidate | $0.50 / $3.00 | Preview model with better capability claims, but more expensive than 2.5 Flash and preview-risky. |
 | `gemini-2.5-pro` | Avoid by default | $1.25 / $10.00 | Good reasoning, but too expensive for every turn of a casual game. |
 | `claude-haiku-4-5` | Candidate | $1 / $5 | Possible middle ground if Gemini quality is too weak, but still notably more expensive. |
-| `claude-sonnet-4-6` | Opt-in quality | $3 / $15 | Better narrative quality, too expensive as default. |
 | `gpt-5.4-mini` | Candidate, not implemented | $0.75 / $4.50 | Strong structured-output candidate; requires adding an OpenAI provider to the proxy. |
 | `gpt-5.4-nano` | Candidate, not implemented | $0.20 / $1.25 | Could be a future low-cost test, but pricing and quality need a dedicated provider spike. |
 
@@ -101,10 +127,12 @@ Keep `gemini-2.5-flash` as the live default.
 
 Next model work should be a measurement branch, not a blind switch:
 
-1. Use proxy logs for Gemini cache-hit, thinking-token, and total-token fields
-   from `usageMetadata`.
-2. Add an env-only `GEMINI_MODEL` test matrix for `gemini-2.5-flash-lite`,
-   `gemini-3.1-flash-lite-preview`, and `gemini-3-flash-preview`.
+1. Read cache hits, thinking tokens and total tokens from the proxy logs; the
+   proxy already logs them from Gemini's `usageMetadata`.
+2. Run the matrix over the current candidates with `scripts/playtest.ts
+   --model=<id>`, which sends the per-request override, so no container has
+   to be reconfigured between runs. (The April plan was an env-only
+   `GEMINI_MODEL` matrix; the override replaced it.)
 3. Run three short Estonian playtests per candidate using the rubric in
    `docs/prompt-audit.md`.
 4. Record average first-story latency, average turn latency, schema retries,

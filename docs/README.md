@@ -12,7 +12,7 @@ explain how the system is shaped and why.
    AI-authored vs app-owned fields.
 3. [Architecture decisions](./decisions/README.md) — accepted ADRs for the
    provider strategy, proxy boundary, game state ownership, special abilities,
-   and secrets.
+   secrets, and the client-supplied system prompt.
 4. [UI/UX notes](./ui-ux.md) — screen flow, interaction principles, and current
    UX risks.
 5. [Model strategy](./model-strategy.md) — why Gemini 2.5 Flash is the default,

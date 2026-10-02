@@ -47,9 +47,13 @@ flowchart LR
     Browser["Browser<br/>React SPA"]
 
     subgraph Games["games container"]
-        Static["Static bundle<br/>/adventure/*"]
+        NginxWeb["nginx proxy<br/>/adventure/*"]
         NginxApi["nginx API proxy<br/>/adventure/api/*"]
         RateLimit["rate limit<br/>CF-Connecting-IP"]
+    end
+
+    subgraph WebC["adventure-web"]
+        Static["Static bundle<br/>runtime config.js"]
     end
 
     subgraph Proxy["adventure-proxy"]
@@ -61,7 +65,8 @@ flowchart LR
     Gemini["Gemini API"]
     Claude["Claude API"]
 
-    Browser --> Static
+    Browser --> NginxWeb
+    NginxWeb --> Static
     Browser --> NginxApi
     NginxApi --> RateLimit
     RateLimit --> Guard
@@ -255,7 +260,7 @@ prompts, schemas, and documentation.
 
 | Concern | Path |
 |---|---|
-| App shell and screen routing | `src/App.tsx`, `src/components/GameViews.tsx` |
+| App shell and screen routing | `src/App.tsx` (renders the screen named by `screen` in `src/store/gameStore.ts`) |
 | Setup UI | `src/components/SetupScreen.tsx` |
 | Gameplay UI | `src/components/GameScreen.tsx` |
 | Secrets UI | `src/components/SecretAssignmentScreen.tsx`, `src/components/GameOverScreen.tsx` |

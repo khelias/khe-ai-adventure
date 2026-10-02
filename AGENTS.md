@@ -47,7 +47,9 @@ product docs; infrastructure is in `khe-homelab`.
   turns are excluded from every check
 - `npm run eval:gate` - `eval` with the committed bounds
 - `npm run proxy:smoke` - signed smoke against the live proxy
-- `npm run schema:hashes` - regenerate `ALLOWED_SCHEMA_HASHES`
+- `npm run schema:hashes` - print each schema's hash and fail if
+  `ALLOWED_SCHEMA_HASHES` in `proxy/server.js` does not match; the allowlist
+  itself is edited by hand
 
 `proxy:smoke` needs `API_SECRET`, and `npm run dev` against the live proxy
 needs the same value as `VITE_API_SECRET`. It lives in
@@ -79,7 +81,8 @@ screen changed.
 src/
   api/         live + mock providers, runtime config
   components/  the screens (Setup, Role, Secret, Game, GameOver, ...)
-  game/        engine, actions, secrets, transcript, types
+  game/        engine, actions, secrets, transcript, types, abilityText
+    prompts/   prompt builders (story-gen, turn, contract, craft, ...)
   i18n/        et + en language packs
   store/       Zustand gameStore
 proxy/
@@ -91,7 +94,8 @@ proxy/
 web/           Dockerfile, nginx.conf, config.js entrypoint of the web image
 docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
                ui-ux, game-systems-audit; ADRs in decisions/
-scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts
+scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts,
+               pin-homelab.sh (CI's homelab pin PR), README.md
 tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,
                proxy-limits,gemini-response}.test.ts
 ```
@@ -102,7 +106,8 @@ tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,
    `proxy/`.
 2. **Exact schema hash allowlist** (`ALLOWED_SCHEMA_HASHES` in
    `proxy/server.js`). A changed request shape updates both sides in the same
-   commit, with `npm run schema:hashes` regenerating the allowlist.
+   commit: `npm run schema:hashes` prints the new hashes, the allowlist is
+   updated by hand, and the same command then passes.
 3. **Origin check:** `Origin` or `Referer` must match `games.khe.ee` or a
    localhost dev origin, otherwise 403.
 4. **Per-visitor rate limit** keys on `$http_cf_connecting_ip` in the nginx
