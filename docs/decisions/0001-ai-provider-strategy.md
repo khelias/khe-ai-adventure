@@ -1,7 +1,6 @@
-# ADR 0001: AI Provider Strategy
+# ADR-0001: AI Provider Strategy
 
-Status: Accepted
-Date: 2026-04-25
+- **Status:** Accepted (2026-04-25)
 
 ## Context
 

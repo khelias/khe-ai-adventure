@@ -1,7 +1,6 @@
-# ADR 0002: Proxy And Schema Guard
+# ADR-0002: Proxy And Schema Guard
 
-Status: Accepted
-Date: 2026-04-25
+- **Status:** Accepted (2026-04-25)
 
 ## Context
 

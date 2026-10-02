@@ -1,7 +1,6 @@
-# ADR 0005: Pass-The-Phone Secrets
+# ADR-0005: Pass-The-Phone Secrets
 
-Status: Accepted
-Date: 2026-04-25
+- **Status:** Accepted (2026-04-25)
 
 ## Context
 

@@ -1,7 +1,6 @@
-# ADR 0003: Client-Owned Game State
+# ADR-0003: Client-Owned Game State
 
-Status: Accepted
-Date: 2026-04-25
+- **Status:** Accepted (2026-04-25)
 
 ## Context
 

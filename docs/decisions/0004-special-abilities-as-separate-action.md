@@ -1,7 +1,6 @@
-# ADR 0004: Special Abilities As Separate Action
+# ADR-0004: Special Abilities As Separate Action
 
-Status: Accepted
-Date: 2026-04-25
+- **Status:** Accepted (2026-04-25)
 
 ## Context
 

@@ -18,10 +18,9 @@ consequences to know what future changes must respect.
 ## ADR Template
 
 ```md
-# ADR N: Title
+# ADR-NNNN: Title
 
-Status: Proposed | Accepted | Superseded
-Date: YYYY-MM-DD
+- **Status:** Proposed | Accepted | Superseded | Deprecated (YYYY-MM-DD)
 
 ## Context
 

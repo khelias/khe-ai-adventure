@@ -1,7 +1,6 @@
-# ADR 0006: Client-Supplied System Prompt Is An Accepted, Bounded Risk
+# ADR-0006: Client-Supplied System Prompt Is An Accepted, Bounded Risk
 
-Status: Accepted
-Date: 2026-09-12
+- **Status:** Accepted (2026-09-12)
 
 ## Context
 
