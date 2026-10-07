@@ -100,7 +100,7 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-      # Grype's ignore rules have no expiry of their own (khe-meta ADR-008).
+      # Grype's ignore rules have no expiry of their own (estate ADR-008).
       - name: Check scan ignore rules have not expired
         run: |
           # Read first, so a missing yq or a broken file fails the step
@@ -147,7 +147,7 @@ jobs:
         with:
           args: docker-archive:web.tar
 
-  # The only job that can write packages or mint an OIDC token (khe-meta ADR-008).
+  # The only job that can write packages or mint an OIDC token (estate ADR-008).
   # It builds with no cache: the gha cache can be written by any step holding
   # the runner's cache token, the scanner container and npm scripts included.
   publish:
@@ -354,7 +354,7 @@ jobs:
           echo "moved=true" >> "$GITHUB_OUTPUT"
 
   # Opens the khe-homelab pin PR with auto-merge through the khe-adventure-pins
-  # App (khe-meta ADR-008). Its key is in the homelab-pin environment, which
+  # App (estate ADR-008). Its key is in the homelab-pin environment, which
   # only main can use; homelab's validate.yml limits what the App may change.
   pin:
     name: Pin homelab

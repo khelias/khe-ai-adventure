@@ -182,7 +182,7 @@ them as `editor_tokens=<n>`.
 CI's `publish` job, on push to main after `App quality` and `Images`, pushes
 `ghcr.io/khelias/khe-ai-adventure-proxy` and `-web` as `sha-<commit>` with
 SBOM, provenance and an attestation, then moves both `main` tags in one step
-(khe-meta ADR-008). Nothing in this repo touches the VM.
+([estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)). Nothing in this repo touches the VM.
 
 khe-homelab pins both images as `:main@sha256:<digest>` in
 `services/apps/games/docker-compose.yml`. After `publish`, the `Pin homelab`

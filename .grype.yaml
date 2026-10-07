@@ -1,4 +1,4 @@
-# Scan gate for the images job in .github/workflows/ci.yml (khe-meta ADR-008).
+# Scan gate for the images job in .github/workflows/ci.yml (estate ADR-008).
 # Fails on HIGH or CRITICAL findings that have a fix.
 fail-on-severity: high
 only-fixed: true

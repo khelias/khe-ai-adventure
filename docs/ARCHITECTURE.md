@@ -230,7 +230,7 @@ Limitations:
 ## Deployment
 
 Both frontend and proxy ship from this repo, as two images built from the same
-commit (khe-meta ADR-008).
+commit ([estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)).
 
 ```mermaid
 flowchart LR

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Moves the khe-homelab pins of both images to one commit's digests and opens
-# (or updates) the auto-merging pin PR (khe-meta ADR-008). CI's "Pin homelab"
+# (or updates) the auto-merging pin PR (estate ADR-008). CI's "Pin homelab"
 # job runs it with the khe-adventure-pins App token in GH_TOKEN.
 #
 #   scripts/pin-homelab.sh <homelab-checkout> <full commit sha>
