@@ -10,6 +10,13 @@ RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af
 
+# CVE-2026-85091 and CVE-2026-103111: the pinned base still carries zlib
+# 1.3.2-r0 and pcre2 10.48-r0. Drop this once an nginx-unprivileged digest
+# ships zlib 1.3.2-r1 and pcre2 10.49-r0.
+USER root
+RUN apk upgrade --no-cache zlib pcre2
+USER 101
+
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --chmod=0755 web/40-adventure-config.sh /docker-entrypoint.d/40-adventure-config.sh
 COPY --from=build /app/dist /usr/share/nginx/html/adventure
