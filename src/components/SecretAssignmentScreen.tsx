@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type AnimationEvent } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { translations } from '../i18n/translations'
 import { kickFirstTurn } from '../game/actions'
@@ -8,6 +8,13 @@ import { SecretSigil } from './SecretSigil'
 // Pass-the-phone secret distribution. One player at a time sees their secret,
 // taps "remember", passes the phone. After the last player, we kick the first
 // turn and the game screen appears. No multi-device — the ritual IS the UX.
+
+type Flip = 'idle' | 'out' | 'in'
+type FlipAction = 'reveal' | 'pass'
+
+// Keep in step with secret-flip-out/secret-flip-in in index.css.
+const FLIP_MS: Record<Exclude<Flip, 'idle'>, number> = { out: 180, in: 220 }
+
 export function SecretAssignmentScreen() {
   const language = useGameStore((s) => s.settings.language)
   const roles = useGameStore((s) => s.roles)
@@ -19,6 +26,21 @@ export function SecretAssignmentScreen() {
   const [index, setIndex] = useState(0)
   // Whether the current player's secret is currently visible on screen.
   const [revealed, setRevealed] = useState(false)
+  // Two-phase card flip: the current card turns away ('out'), the swap happens
+  // while it is edge-on, then the new card turns in ('in'). The next player's
+  // secret only mounts at the swap, so it is never in the DOM early.
+  const [flip, setFlip] = useState<Flip>('idle')
+  // Passing on turns the card back the way it came.
+  const [flipBack, setFlipBack] = useState(false)
+  const pendingRef = useRef<FlipAction | null>(null)
+  const timeoutRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(timeoutRef.current)
+      pendingRef.current = null
+    }
+  }, [])
 
   const currentRole = roles[index]
   const currentSecret = secrets.find((s) => s.ownerRoleId === currentRole?.id)
@@ -35,17 +57,69 @@ export function SecretAssignmentScreen() {
           : 'pending',
   }))
 
-  const onReveal = () => setRevealed(true)
+  // A timeout backs up animationend, which never fires when the animation is
+  // removed or the element hidden, so the tap guard of the 'out' phase cannot
+  // leave the screen stuck.
+  const startPhase = (phase: Exclude<Flip, 'idle'>) => {
+    window.clearTimeout(timeoutRef.current)
+    if (phase === 'out') setFlipBack(pendingRef.current === 'pass')
+    setFlip(phase)
+    timeoutRef.current = window.setTimeout(
+      phase === 'out' ? swap : settle,
+      FLIP_MS[phase] * 2,
+    )
+  }
+
+  const swap = () => {
+    const action = pendingRef.current
+    if (!action) return
+    pendingRef.current = null
+    if (action === 'reveal') {
+      setRevealed(true)
+    } else {
+      setRevealed(false)
+      setIndex((i) => i + 1)
+    }
+    startPhase('in')
+  }
+
+  // A tap while the card turns in waits for it to land, so the next turn
+  // starts from flat instead of snapping from mid-angle.
+  const settle = () => {
+    window.clearTimeout(timeoutRef.current)
+    if (pendingRef.current) startPhase('out')
+    else setFlip('idle')
+  }
+
+  const beginFlip = (action: FlipAction) => {
+    if (flip === 'out') return
+    pendingRef.current = action
+    if (flip === 'idle') startPhase('out')
+  }
+
+  const onFlipAnimationEnd = (event: AnimationEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return
+    if (flip === 'out' && event.animationName === 'secret-flip-out') swap()
+    else if (flip === 'in' && event.animationName === 'secret-flip-in') settle()
+  }
+
+  const onReveal = () => beginFlip('reveal')
 
   const onRememberAndPass = async () => {
-    setRevealed(false)
+    if (flip === 'out') return
     if (isLast) {
       // All players have seen. Kick the first turn.
+      pendingRef.current = null
+      settle()
+      setRevealed(false)
       await kickFirstTurn()
     } else {
-      setIndex(index + 1)
+      beginFlip('pass')
     }
   }
+
+  const flipClass =
+    flip === 'idle' ? '' : ` secret-flip--${flip}${flipBack ? ' secret-flip--back' : ''}`
 
   if (!currentRole || !currentSecret) {
     // Shouldn't happen — assignSecrets runs before this screen mounts.
@@ -65,7 +139,7 @@ export function SecretAssignmentScreen() {
       </div>
 
       {!revealed ? (
-        <div className="secret-handoff fade-in">
+        <div className={`secret-handoff${flipClass}`} onAnimationEnd={onFlipAnimationEnd}>
           <div className="secret-progress-rail" aria-hidden="true">
             {progressItems.map((item) => (
               <span
@@ -98,7 +172,7 @@ export function SecretAssignmentScreen() {
           </button>
         </div>
       ) : (
-        <div className="secret-reveal fade-in">
+        <div className={`secret-reveal${flipClass}`} onAnimationEnd={onFlipAnimationEnd}>
           <div className="secret-document-card">
             <div className="secret-document-top">
               <span className="secret-document-file">{strings.secretsDossierLabel}</span>

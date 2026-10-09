@@ -97,8 +97,12 @@ docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts,
                pin-homelab.sh (CI's homelab pin PR), README.md
 tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,
-               proxy-limits,gemini-response}.test.ts
+               proxy-limits,gemini-response,sheet-motion}.test.ts
 ```
+
+`:hover` rules in `src/index.css` live inside
+`@media (hover: hover) and (pointer: fine)`, so a tap on a phone leaves no
+sticky hover; a tappable's touch feedback is its `:active` rule.
 
 ## Architecture invariants
 

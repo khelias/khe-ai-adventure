@@ -75,6 +75,22 @@
   0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
   30%            { opacity: 1;   transform: translateY(-4px); }
 }
+@keyframes sheet-up {
+  from { transform: translate3d(0, calc(100% + 3rem), 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+@keyframes sheet-scrim-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes secret-flip-out {
+  from { transform: perspective(1400px) rotateY(0deg); }
+  to   { transform: perspective(1400px) rotateY(calc(90deg * var(--flip-dir, 1))); }
+}
+@keyframes secret-flip-in {
+  from { transform: perspective(1400px) rotateY(calc(-90deg * var(--flip-dir, 1))); }
+  to   { transform: perspective(1400px) rotateY(0deg); }
+}
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -147,10 +163,6 @@ body::after {
   background: radial-gradient(ellipse at center, rgba(167, 139, 250, 0.06), transparent 70%);
   pointer-events: none;
   z-index: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; }
 }
 
 html {
@@ -254,12 +266,20 @@ button {
   transform: translateY(0.26em);
 }
 
-.app-brand-link:hover,
-.app-brand-link:focus-visible {
+.app-brand-link:focus-visible,
+.app-brand-link:active {
   transform: translateY(-1px);
   border-color: rgba(165, 180, 252, 0.42);
   color: var(--text);
   outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .app-brand-link:hover {
+    transform: translateY(-1px);
+    border-color: rgba(165, 180, 252, 0.42);
+    color: var(--text);
+    outline: none;
+  }
 }
 
 .app-header__context {
@@ -545,7 +565,10 @@ button {
   border-color: var(--accent);
   box-shadow: 0 0 8px var(--accent-glow);
 }
-.genre-dot:hover:not(.active) { border-color: var(--text-muted); }
+@media (hover: hover) and (pointer: fine) {
+  .genre-dot:hover:not(.active) { border-color: var(--text-muted); }
+}
+.genre-dot:active:not(.active) { border-color: var(--text-muted); }
 
 .setup-showcase {
   width: 100%;
@@ -635,7 +658,15 @@ button {
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.setup-stage-nav:hover {
+@media (hover: hover) and (pointer: fine) {
+  .setup-stage-nav:hover {
+    border-color: var(--line-accent);
+    background: rgba(24, 19, 40, 0.9);
+    color: var(--accent-bright);
+    box-shadow: 0 0 24px -12px var(--accent-glow);
+  }
+}
+.setup-stage-nav:active {
   border-color: var(--line-accent);
   background: rgba(24, 19, 40, 0.9);
   color: var(--accent-bright);
@@ -747,9 +778,14 @@ button {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.setup-genre-toggle:hover,
-.setup-genre-toggle[aria-expanded="true"] {
+.setup-genre-toggle[aria-expanded="true"],
+.setup-genre-toggle:active {
   color: var(--accent-bright);
+}
+@media (hover: hover) and (pointer: fine) {
+  .setup-genre-toggle:hover {
+    color: var(--accent-bright);
+  }
 }
 .setup-genre-toggle:focus-visible {
   outline: 2px solid var(--accent);
@@ -796,7 +832,13 @@ button {
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.genre-choice:hover {
+@media (hover: hover) and (pointer: fine) {
+  .genre-choice:hover {
+    border-color: var(--line-strong);
+    color: var(--text-dim);
+  }
+}
+.genre-choice:active {
   border-color: var(--line-strong);
   color: var(--text-dim);
 }
@@ -927,7 +969,10 @@ button {
   color: var(--accent);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
-.seg-btn:hover:not(.active) { color: var(--text-muted); }
+@media (hover: hover) and (pointer: fine) {
+  .seg-btn:hover:not(.active) { color: var(--text-muted); }
+}
+.seg-btn:active:not(.active) { color: var(--text-muted); }
 .seg-btn--num {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 1.5rem;
@@ -974,7 +1019,13 @@ button {
   transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
 }
-.btn-begin:hover:not(:disabled) {
+@media (hover: hover) and (pointer: fine) {
+  .btn-begin:hover:not(:disabled) {
+    border-color: var(--line-accent);
+    color: var(--text-dim);
+  }
+}
+.btn-begin:active:not(:disabled) {
   border-color: var(--line-accent);
   color: var(--text-dim);
 }
@@ -984,7 +1035,14 @@ button {
   color: #f5f3ff;
   box-shadow: 0 0 40px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.07);
 }
-.btn-begin.ready:hover:not(:disabled) {
+@media (hover: hover) and (pointer: fine) {
+  .btn-begin.ready:hover:not(:disabled) {
+    background: var(--accent);
+    color: #0a0913;
+    box-shadow: 0 0 60px -10px var(--accent-glow);
+  }
+}
+.btn-begin.ready:active:not(:disabled) {
   background: var(--accent);
   color: #0a0913;
   box-shadow: 0 0 60px -10px var(--accent-glow);
@@ -1011,7 +1069,10 @@ button {
   padding: 0.5rem 0;
   transition: color 0.15s;
 }
-.setup-advanced-toggle:hover { color: var(--text-dim); }
+@media (hover: hover) and (pointer: fine) {
+  .setup-advanced-toggle:hover { color: var(--text-dim); }
+}
+.setup-advanced-toggle:active { color: var(--text-dim); }
 
 /* Advanced context section */
 .ctx-section {
@@ -1223,11 +1284,18 @@ button {
   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
-.model-corner__toggle:hover,
-.model-corner__toggle[aria-expanded="true"] {
+.model-corner__toggle[aria-expanded="true"],
+.model-corner__toggle:active {
   border-color: var(--line-accent);
   color: var(--accent-bright);
   background: rgba(24, 19, 40, 0.94);
+}
+@media (hover: hover) and (pointer: fine) {
+  .model-corner__toggle:hover {
+    border-color: var(--line-accent);
+    color: var(--accent-bright);
+    background: rgba(24, 19, 40, 0.94);
+  }
 }
 .model-corner__panel {
   width: min(16rem, calc(100vw - 2rem));
@@ -1272,9 +1340,14 @@ button {
   transition: color 0.15s ease;
 }
 
-.adventure-footer a:hover,
-.adventure-footer a:focus-visible {
+.adventure-footer a:focus-visible,
+.adventure-footer a:active {
   color: var(--text-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .adventure-footer a:hover {
+    color: var(--text-muted);
+  }
 }
 
 .adventure-footer a:focus-visible {
@@ -1300,7 +1373,10 @@ button {
   transition: color 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
-.btn-ghost:hover { color: var(--text-muted); }
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover { color: var(--text-muted); }
+}
+.btn-ghost:active { color: var(--text-muted); }
 .btn-ghost:focus-visible { outline: none; color: var(--text-dim); }
 
 /* Visually-hidden text for screen readers. */
@@ -1680,13 +1756,23 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 .choice:last-of-type { border-bottom: 1px solid var(--line); }
-.choice:hover, .choice:focus-visible {
+.choice:focus-visible {
   background: linear-gradient(to right, var(--accent-veil), transparent 65%);
   border-top-color: var(--line-accent);
   outline: none;
   box-shadow: inset 3px 0 0 var(--line-accent);
 }
-.choice:hover + .choice { border-top-color: var(--line-accent); }
+@media (hover: hover) and (pointer: fine) {
+  .choice:hover {
+    background: linear-gradient(to right, var(--accent-veil), transparent 65%);
+    border-top-color: var(--line-accent);
+    outline: none;
+    box-shadow: inset 3px 0 0 var(--line-accent);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .choice:hover + .choice { border-top-color: var(--line-accent); }
+}
 .choice:active {
   background: linear-gradient(to right, rgba(139,92,246,0.13), transparent 65%);
 }
@@ -1723,12 +1809,18 @@ button {
   margin-bottom: -0.05rem;
   transition: color 0.2s;
 }
-.choice:hover .choice__num,
 .choice:focus-visible .choice__num { color: var(--accent); }
-.choice:hover .choice__text,
+@media (hover: hover) and (pointer: fine) {
+  .choice:hover .choice__num { color: var(--accent); }
+}
 .choice:focus-visible .choice__text { color: var(--text); }
-.choice:hover .choice__actor,
+@media (hover: hover) and (pointer: fine) {
+  .choice:hover .choice__text { color: var(--text); }
+}
 .choice:focus-visible .choice__actor { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .choice:hover .choice__actor { color: var(--accent); }
+}
 
 .choice-tools {
   display: flex;
@@ -1749,30 +1841,65 @@ button {
   min-height: 44px;
   padding-inline: 1rem;
 }
-.ability-drawer {
+.sheet {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 110;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 1rem;
+}
+.sheet[data-phase="closing"] {
+  pointer-events: none;
+}
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
   background: rgba(4, 3, 10, 0.72);
   backdrop-filter: blur(8px);
-  animation: fade-in 0.18s ease both;
+  touch-action: none;
+  animation: sheet-scrim-in 0.4s ease backwards;
 }
-.ability-panel {
+.sheet-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(42rem, 100%);
-  max-height: min(78vh, 42rem);
-  overflow: auto;
+  max-height: min(84dvh, 42rem);
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(167,139,250,0.08), rgba(255,255,255,0.018)),
     rgba(14, 12, 24, 0.98);
-  padding: 1rem;
+  padding: 0 1rem 1rem;
   box-shadow: 0 24px 90px rgba(0,0,0,0.66);
-  animation: impact-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform;
+  animation: sheet-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+}
+.sheet-grab {
+  flex: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+.sheet-grab:active {
+  cursor: grabbing;
+}
+.sheet-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  margin-bottom: -0.35rem;
+}
+.sheet-handle::before {
+  content: '';
+  width: 36px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line-accent);
 }
 .ability-panel__head {
   display: flex;
@@ -1808,16 +1935,28 @@ button {
   text-transform: uppercase;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.ability-panel__close:hover,
-.ability-panel__close:focus-visible {
+.ability-panel__close:focus-visible,
+.ability-panel__close:active {
   border-color: var(--line-accent);
   color: var(--text);
   background: var(--accent-veil);
   outline: none;
 }
+@media (hover: hover) and (pointer: fine) {
+  .ability-panel__close:hover {
+    border-color: var(--line-accent);
+    color: var(--text);
+    background: var(--accent-veil);
+    outline: none;
+  }
+}
 .ability-list {
   display: grid;
+  grid-auto-rows: max-content;
   gap: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .ability-card {
   display: grid;
@@ -1835,12 +1974,20 @@ button {
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
-.ability-card:hover:not(:disabled),
-.ability-card:focus-visible:not(:disabled) {
+.ability-card:focus-visible:not(:disabled),
+.ability-card:active:not(:disabled) {
   border-color: var(--line-accent);
   background: var(--accent-veil);
   color: var(--text);
   outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ability-card:hover:not(:disabled) {
+    border-color: var(--line-accent);
+    background: var(--accent-veil);
+    color: var(--text);
+    outline: none;
+  }
 }
 .ability-card:disabled {
   cursor: not-allowed;
@@ -2141,6 +2288,15 @@ button {
 .secret-reveal {
   display: grid;
   gap: 1rem;
+}
+.secret-flip--out {
+  animation: secret-flip-out 180ms cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+.secret-flip--in {
+  animation: secret-flip-in 220ms cubic-bezier(0, 0.55, 0.45, 1) both;
+}
+.secret-flip--back {
+  --flip-dir: -1;
 }
 .secret-progress-rail {
   display: flex;
@@ -2638,10 +2794,12 @@ button {
   -webkit-tap-highlight-color: transparent;
   @apply disabled:opacity-40 disabled:cursor-not-allowed;
 }
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent);
-  color: #0a0913;
-  box-shadow: 0 0 40px -8px var(--accent-glow);
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent);
+    color: #0a0913;
+    box-shadow: 0 0 40px -8px var(--accent-glow);
+  }
 }
 .btn-primary:active:not(:disabled) { transform: scale(0.98); }
 
@@ -2660,7 +2818,13 @@ button {
   -webkit-tap-highlight-color: transparent;
   @apply disabled:opacity-40 disabled:cursor-not-allowed;
 }
-.btn-secondary:hover:not(:disabled) {
+@media (hover: hover) and (pointer: fine) {
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--line-accent);
+    color: var(--text-dim);
+  }
+}
+.btn-secondary:active:not(:disabled) {
   border-color: var(--line-accent);
   color: var(--text-dim);
 }
@@ -3197,11 +3361,68 @@ button {
     width: 100%;
     justify-content: center;
   }
-  .ability-drawer {
+  .sheet {
     padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
   }
-  .ability-panel {
-    max-height: min(84dvh, 42rem);
-    padding: 0.9rem;
+  .sheet-panel {
+    padding: 0 0.9rem 0.9rem;
+  }
+}
+
+/* Reduced motion: last in the file so it wins over the rules above. Looping
+   decoration stops; entrances keep their timing as opacity-only fades, so
+   animationend still fires where the code waits for it. */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  .circle-beam.active,
+  .setup-showcase__stage::before,
+  .setup-stage-orbit span:nth-child(n),
+  .param-impact-card::before,
+  .param-impact-mark::after,
+  .param-shake {
+    animation: none;
+  }
+  /* Their resting state is mid-sweep; without the sweep they would sit as a
+     static stripe. */
+  .setup-showcase__stage::before,
+  .param-impact-card::before {
+    opacity: 0;
+  }
+
+  @keyframes scene-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes impact-enter {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes slide-down {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes dot-rise {
+    0%, 60%, 100% { opacity: 0.2; }
+    30%           { opacity: 1; }
+  }
+  @keyframes loading-hint-in {
+    from { opacity: 0; }
+    to   { opacity: 0.9; }
+  }
+  @keyframes sheet-up {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes secret-flip-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  @keyframes secret-flip-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 }

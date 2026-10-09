@@ -118,7 +118,11 @@ explanation.
 
 The hidden state should feel like a handoff moment: phone owner, progress, and
 privacy cue in one focused surface. The revealed state should feel materially
-different, like opening a classified goal card.
+different, like opening a classified goal card: the card turns edge-on, swaps,
+and the dossier turns in (a cross-fade under reduced motion). The dossier, and
+with it the secret, mounts only at that swap, so the next player's secret is
+never in the DOM before their reveal. Taps are ignored while the card turns
+away, so a double tap cannot skip a player.
 
 ### Gameplay
 
@@ -132,6 +136,9 @@ The gameplay screen must prioritize:
 
 Normal choices should not be named after one player. Special abilities may use a
 player's skill, but they are triggered through the separate ability action.
+The ability drawer is a bottom sheet: it closes by dragging or flicking it down
+from the handle or head, by tapping the scrim, with Escape, or with its cancel
+button, and it sits above the consequence toast.
 Parameter movement should feel like something happened in the fiction, not like
 the UI changed a score.
 
@@ -178,7 +185,7 @@ Strong:
 - Player count and names are grouped correctly.
 - Advanced model selection is hidden from the main path.
 - Special abilities are separate from normal choices and open as a focused
-  drawer.
+  bottom sheet.
 - Parameter changes appear as in-world consequence events.
 - Game over shows winners and final parameters before the long final narration.
 - The final setup screen gives useful review before generation.

@@ -11,6 +11,8 @@ import type {
   Role,
 } from '../game/types'
 import { LoadingWithHint } from './LoadingDots'
+import { BottomSheet } from './BottomSheet'
+import { prefersReducedMotion } from './sheetMotion'
 
 function ParameterIcon({ archetype }: { archetype?: ParameterArchetype }) {
   const kind = archetype ?? 'pressure'
@@ -175,7 +177,7 @@ export function GameScreen() {
   const [customText, setCustomText] = useState('')
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   }, [currentTurn])
 
   const onChoice = (choice: Choice) => {
@@ -218,6 +220,8 @@ export function GameScreen() {
   const paragraphs = sceneText.split('\n').filter(Boolean)
   const waitingForScene = isLoading && sceneText.length > 0
   const unusedAbilities = roles.filter((role) => !role.used)
+  const abilitySheetOpen =
+    showAbilityPanel && choices.length > 0 && !waitingForScene && !isLoading
 
   return (
     <section>
@@ -321,43 +325,6 @@ export function GameScreen() {
                 </button>
               </div>
 
-              {showAbilityPanel ? (
-                <div className="ability-drawer" role="dialog" aria-modal="true" aria-label={strings.abilityPanelTitle}>
-                  <div className="ability-panel">
-                    <div className="ability-panel__head">
-                      <div>
-                        <span className="ability-panel__title">{strings.abilityPanelTitle}</span>
-                        <span className="ability-panel__hint">{strings.abilityPanelHint}</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="ability-panel__close"
-                        onClick={() => setShowAbilityPanel(false)}
-                      >
-                        {strings.customChoiceCancel}
-                      </button>
-                    </div>
-                    <div className="ability-list">
-                      {roles.map((role) => (
-                        <button
-                          key={role.id}
-                          type="button"
-                          className={`ability-card${role.used ? ' is-used' : ''}`}
-                          disabled={role.used}
-                          onClick={() => onAbilityChoice(role)}
-                        >
-                          <span className="ability-card__owner">{role.name}</span>
-                          <span className="ability-card__text">{formatAbilityForDisplay(role)}</span>
-                          <span className="ability-card__action">
-                            {role.used ? strings.usedLabel : strings.abilityUseBtn}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
               {/* Custom input */}
               <div className="mt-4">
                 {showCustomInput ? (
@@ -399,6 +366,46 @@ export function GameScreen() {
           )}
         </div>
       ) : null}
+
+      <BottomSheet
+        open={abilitySheetOpen}
+        onClose={() => setShowAbilityPanel(false)}
+        ariaLabel={strings.abilityPanelTitle}
+      >
+        <div className="sheet-grab">
+          <div className="sheet-handle" aria-hidden="true" />
+          <div className="ability-panel__head">
+            <div>
+              <span className="ability-panel__title">{strings.abilityPanelTitle}</span>
+              <span className="ability-panel__hint">{strings.abilityPanelHint}</span>
+            </div>
+            <button
+              type="button"
+              className="ability-panel__close"
+              onClick={() => setShowAbilityPanel(false)}
+            >
+              {strings.customChoiceCancel}
+            </button>
+          </div>
+        </div>
+        <div className="ability-list">
+          {roles.map((role) => (
+            <button
+              key={role.id}
+              type="button"
+              className={`ability-card${role.used ? ' is-used' : ''}`}
+              disabled={role.used}
+              onClick={() => onAbilityChoice(role)}
+            >
+              <span className="ability-card__owner">{role.name}</span>
+              <span className="ability-card__text">{formatAbilityForDisplay(role)}</span>
+              <span className="ability-card__action">
+                {role.used ? strings.usedLabel : strings.abilityUseBtn}
+              </span>
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
 
       {error ? (
         <p style={{ color: 'var(--state-failing)', fontSize: '0.85rem', marginTop: '1rem' }} className="type-caps">
