@@ -8,7 +8,7 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b9241c6e7b8e9a862f129d8d4199ab64b10390949a78bdd5603379b32c844083
 
 # CVE-2026-85091, CVE-2026-103111 and CVE-2026-4775: the pinned base still
 # carries zlib 1.3.2-r0, pcre2 10.48-r0 and tiff 4.7.1-r0. Drop each package
