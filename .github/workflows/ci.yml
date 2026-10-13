@@ -134,14 +134,14 @@ jobs:
           docker save -o web.tar khe-ai-adventure-web:ci
 
       - name: Scan proxy
-        uses: docker://anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
+        uses: docker://anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe
         env:
           GRYPE_DB_CACHE_DIR: .grype-db
         with:
           args: docker-archive:proxy.tar
 
       - name: Scan web
-        uses: docker://anchore/grype:v0.119.0@sha256:8c2c9234a345577a6d321a4753aa3ee1276d8975c8452d2344a56b57733ecad3
+        uses: docker://anchore/grype:v0.120.1@sha256:e4a44ef45d285b829ce6efe2642980329661bd2d18eab5fc539138d4adaebbbe
         env:
           GRYPE_DB_CACHE_DIR: .grype-db
         with:
