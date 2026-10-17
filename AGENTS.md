@@ -26,9 +26,11 @@ product docs; infrastructure is in `khe-homelab`.
   `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
   `public/fonts/OFL.txt`). No request goes to Google. `vite build` writes the
   bundled dependencies' licenses to `dist/third-party-licenses.md`.
-- The stack moves on its own schedule and shares no code package with the
-  other app repos
-  ([estate ADR-002](https://github.com/khelias/khe-architecture/blob/main/decisions/002-independent-stacks.md)).
+- The stack moves on its own schedule. Code shared with the other app repos
+  comes only as a versioned presentation package, such as the KHE site
+  header in `@khelias/ui` from khe-ui: pinned here, and Renovate never
+  automerges it
+  ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md)).
 
 ## Commands
 
