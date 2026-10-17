@@ -86,7 +86,8 @@ src/
   i18n/        et + en language packs
   store/       Zustand gameStore
 proxy/
-  server.js        schema guard, origin check, provider calls, editor routing
+  server.js        schema guard, origin check, provider calls, editor pass
+  generation.js    one request: deadline, contract retries, editor routing
   limits.js        per-client and global usage budgets, IPv6 /64 client key
   gemini-response.js  Gemini response parsing: safety blocks, truncation
   et-style-guide.js  system prompt for the Estonian editor pass
@@ -96,8 +97,8 @@ docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
                ui-ux, game-systems-audit; ADRs in decisions/
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts,
                pin-homelab.sh (CI's homelab pin PR), README.md
-tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,
-               proxy-limits,gemini-response,sheet-motion}.test.ts
+tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,proxy-limits,
+               proxy-generation,gemini-response,sheet-motion}.test.ts
 ```
 
 `:hover` rules in `src/index.css` live inside
@@ -175,11 +176,18 @@ sequel texts) goes through a second call to `GEMINI_MODEL` with the editorial
 prompt in `proxy/et-style-guide.js` (`estonianEditorPass`,
 `estonianStructuredTextEditorPass`), inside a 25 s budget
 (`EDITOR_TOTAL_BUDGET_MS`). A failure falls back to the unedited
-text; the whole response stays under nginx's 120 s `proxy_read_timeout`.
-It runs with thinking off (or at the model's lowest level), is capped at 40
+text. It runs with thinking off (or at the model's lowest level), is capped at 40
 tasks, is skipped when the global day budget has no room, and its actual
 tokens count against the global budget only. The `proxy ok` log line reports
 them as `editor_tokens=<n>`.
+
+One 115 s deadline per `/generate` request (`REQUEST_BUDGET_MS`) covers the
+provider call, the contract retries and the editor pass, so the response
+stays under nginx's 120 s `proxy_read_timeout`. A retry starts only with at
+least 20 s left (`MIN_RETRY_BUDGET_MS`, unverified), the editor gets the
+lesser of its 25 s and what is left, and a request that hits the deadline
+answers 504. An empty-choices turn whose retries the deadline cut short also
+answers 504 rather than being coerced into a game over.
 
 ## Deployment
 

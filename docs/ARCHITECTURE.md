@@ -188,6 +188,9 @@ The proxy still defends against drift:
 - empty choices with `gameOver=false` trigger two retries
 - if retries fail, the proxy coerces `gameOver=true`
 - continuing choices with no negative expected cost trigger retries
+- one 115 s deadline covers the provider call, the retries and the editor
+  pass; a retry is skipped with under 20 s left, and an empty-choices turn
+  the deadline cut short answers 504 instead of being coerced
 - normal choices marked `isAbility=true` are treated as contract violations
 
 These guardrails keep one bad provider response from freezing the game.
@@ -268,7 +271,7 @@ prompts, schemas, and documentation.
 | Game mechanics | `src/game/engine.ts`, `src/game/actions.ts`, `src/game/secrets.ts` |
 | Prompt modules | `src/game/prompts/` |
 | API client | `src/api/adventure.ts` |
-| Provider proxy | `proxy/server.js`, `proxy/limits.js`, `proxy/gemini-response.js` |
+| Provider proxy | `proxy/server.js`, `proxy/generation.js`, `proxy/limits.js`, `proxy/gemini-response.js` |
 | Headless playtest | `scripts/playtest.ts` |
 
 ## Related Documents

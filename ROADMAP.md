@@ -223,7 +223,7 @@ Definition Of "Good Enough" a measurement instead of a feeling.
   `expectedChanges`, consequence text) and the UI waits for the whole object,
   so CPU generation speed lands directly on the table as silence. CPU
   tokens-per-second on this host has not been measured here. The proxy's
-  upstream timeout is 115 s under nginx's 120 s, and the Estonian editor pass
+  request deadline is 115 s under nginx's 120 s, and the Estonian editor pass
   is a second call that today always goes to the configured `GEMINI_MODEL`, so
   a local main model with a Gemini editor is cheaper, not free. Estonian
   quality of 7B-class open models is the larger unknown and is what the

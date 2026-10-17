@@ -3,6 +3,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { ET_STYLE_GUIDE } = require('./et-style-guide');
 const { createUsageLimiter, parsePositiveInt, tokenCountFromUsage } = require('./limits');
 const { parseGeminiResponse } = require('./gemini-response');
+const { createDeadline, runGeneration } = require('./generation');
 const crypto = require('crypto');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
@@ -37,7 +38,13 @@ function resolveModel(provider, requested) {
   return requested;
 }
 
-const UPSTREAM_TIMEOUT_MS = 115_000; // slightly under nginx proxy_read_timeout (120s)
+// One deadline covers the whole /generate response: the provider call, the
+// contract retries and the editor pass. nginx in front has
+// proxy_read_timeout 120s; the 5 s margin is for Express and the hop to nginx.
+const REQUEST_BUDGET_MS = 115_000;
+// A contract retry starts only with this much of the deadline left. Unverified:
+// no turn latency is recorded yet; revisit from the `proxy ok ... ms=` lines.
+const MIN_RETRY_BUDGET_MS = 20_000;
 const APPROX_CHARS_PER_TOKEN = 4;
 
 const INPUT_BUDGETS = {
@@ -288,18 +295,13 @@ app.post('/generate', async (req, res) => {
     return res.status(err.status || 400).json(err.publicBody || { error: err.message });
   }
   const t0 = Date.now();
+  const deadline = createDeadline(REQUEST_BUDGET_MS);
   try {
-    // Estonian grammar is handled by the Gemini editor pass (corrective),
-    // not by prepending the style guide to the generator's system prompt.
-    // This keeps the generator focused on narrative craft and saves ~800
-    // tokens per turn. The ET_STYLE_GUIDE is still used in EDITOR_SYSTEM.
-    const effectiveSystemPrompt = systemPrompt;
-
-    const callOnce = async (extraPrompt = '') => {
+    const callOnce = async (extraPrompt, signal) => {
       const budget = validateInputBudget({
         schemaName: knownSchema,
         prompt,
-        systemPrompt: effectiveSystemPrompt,
+        systemPrompt,
         extraPrompt,
       });
       if (!budget.ok) throw budgetExceededError(budget);
@@ -308,8 +310,8 @@ app.post('/generate', async (req, res) => {
       let result;
       try {
         result = provider === 'claude'
-          ? await callClaude({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel })
-          : await callGemini({ prompt: fullPrompt, schema, systemPrompt: effectiveSystemPrompt, model: effectiveModel });
+          ? await callClaude({ prompt: fullPrompt, schema, systemPrompt, model: effectiveModel, signal })
+          : await callGemini({ prompt: fullPrompt, schema, systemPrompt, model: effectiveModel, signal });
       } catch (e) {
         usageLimiter.adjustClientBudget(reservation, Number(e?.totalTokens) || 0);
         throw e;
@@ -318,119 +320,18 @@ app.post('/generate', async (req, res) => {
       return result;
     };
 
-    let result = await callOnce();
-
-    // Turn responses have { scene, choices, parameters, gameOver }. For those:
-    //   1) Normalize malformed choice arrays.
-    //   2) Retry invalid empty-choice / free-choice contracts.
-    //   3) If language is Estonian, run scene + gameOverText through Gemini editor.
-    // A turn-shaped response may arrive with a malformed `choices` field
-    // (object, null, or even a string) if the model drifts off-schema at
-    // climax / gameOver moments. Normalise here so frontend `.map()` and
-    // playtest `.entries()` don't crash.
-    if (result?.data && typeof result.data.scene === 'string' && !Array.isArray(result.data.choices)) {
-      console.warn(`turn response has non-array choices (type=${typeof result.data.choices}, provider=${provider}); coerced to []`);
-      result.data.choices = [];
-    }
-    let isTurnShape = result?.data && typeof result.data.scene === 'string' && Array.isArray(result.data.choices);
-
-    // Schema-contract retry: turn-shaped responses MUST have either
-    // choices.length === 3 OR gameOver === true. Providers sometimes drift and
-    // emit neither — most often on tense reveal scenes where the model
-    // "feels" the turn has concluded. Without fallback, the game freezes.
-    //
-    // Strategy: two retries with escalating reminders, then server-side
-    // coercion (force gameOver=true so the client shows a finale rather
-    // than a blank choices panel).
-    const isEmptyTurnContract = () =>
-      isTurnShape && Array.isArray(result.data.choices) && result.data.choices.length === 0 && result.data.gameOver !== true;
-    const RETRY_REMINDERS = [
-      '\n\n⚠ SCHEMA CONTRACT: Your previous attempt returned an empty `choices` array with `gameOver: false`. This is not a valid response — the game cannot continue without either 3 choices OR gameOver=true. Retry now: output EXACTLY 3 choices that advance the story, OR set gameOver=true with a full gameOverText.',
-      '\n\n⚠ FINAL ATTEMPT: The previous TWO responses returned empty choices with gameOver=false. This will FREEZE THE GAME for the players at the table. You have ONE job right now: either produce 3 concrete choices that let play continue, OR commit to gameOver=true and write a full 3-5 paragraph gameOverText that concludes the scene. Choosing one of these is a REQUIREMENT, not a preference. Do not return empty choices again.',
-    ];
-    let retried = 0;
-    for (const reminder of RETRY_REMINDERS) {
-      if (!isEmptyTurnContract()) break;
-      retried += 1;
-      console.warn(`empty-choices contract violation attempt ${retried} (provider=${provider}); retrying`);
-      try {
-        const retryResult = await callOnce(reminder);
-        if (retryResult?.data && typeof retryResult.data.scene === 'string' && !Array.isArray(retryResult.data.choices)) {
-          retryResult.data.choices = [];
-        }
-        result = retryResult;
-        isTurnShape = result?.data && typeof result.data.scene === 'string' && Array.isArray(result.data.choices);
-      } catch (e) {
-        console.warn(`retry ${retried} failed: ${e.message || e}`);
-      }
-    }
-    // Last-resort coercion: if we still have empty choices + gameOver=false
-    // after all retries, force gameOver=true and synthesize a minimal
-    // gameOverText from the scene. Better an abrupt ending than a freeze.
-    let coercedGameOver = false;
-    if (isEmptyTurnContract()) {
-      coercedGameOver = true;
-      console.warn(`coercing gameOver=true after ${retried} retries failed (provider=${provider})`);
-      result.data.gameOver = true;
-      if (!result.data.gameOverText || typeof result.data.gameOverText !== 'string' || result.data.gameOverText.trim().length < 20) {
-        result.data.gameOverText = (result.data.scene || '') + '\n\n' + (language === 'et'
-          ? 'Lugu katkeb siin — jutustaja jäi sõnadega kimbatusse. Mis edasi juhtus, jääb teie kujutlusvõimesse.'
-          : 'The story breaks off here — the narrator ran out of words. What happens next is yours to imagine.');
-      }
-    }
-    const COST_RETRY_REMINDERS = [
-      '\n\n⚠ CHOICE COST CONTRACT: Your previous response offered at least one choice with no real downside. Every continuing-turn choice MUST include at least one negative `expectedChanges` entry. A choice may also improve something, but no option can be all upside. Retry now with exactly 3 choices; each choice has at least one negative delta that clearly follows from the action.',
-      '\n\n⚠ FINAL CHOICE-COST ATTEMPT: The offered choices still had free/all-upside options. This breaks the game economy. Rewrite the choices only by producing a full valid turn response: exactly 3 choices, and every choice includes at least one negative `expectedChanges` entry. Keep choice text free of character names.',
-    ];
-    const choiceCostContractViolations = () =>
-      isTurnShape && result.data.gameOver !== true && Array.isArray(result.data.choices) && result.data.choices.length > 0
-        ? getChoiceCostViolations(result.data)
-        : [];
-    let costRetried = 0;
-    for (const reminder of COST_RETRY_REMINDERS) {
-      const violations = choiceCostContractViolations();
-      if (violations.length === 0) break;
-      costRetried += 1;
-      console.warn(`choice-cost contract violation attempt ${costRetried} (provider=${provider}): ${violations.join(' | ')}; retrying`);
-      try {
-        const retryResult = await callOnce(`${reminder}\n\nViolations to fix:\n- ${violations.join('\n- ')}`);
-        if (retryResult?.data && typeof retryResult.data.scene === 'string' && !Array.isArray(retryResult.data.choices)) {
-          retryResult.data.choices = [];
-        }
-        result = retryResult;
-        isTurnShape = result?.data && typeof result.data.scene === 'string' && Array.isArray(result.data.choices);
-      } catch (e) {
-        console.warn(`choice-cost retry ${costRetried} failed: ${e.message || e}`);
-      }
-    }
-    let editorMs = 0;
-    let editorApplied = false;
-    let editorTokens = null;
-    if (!isTurnShape && language === 'et' && GEMINI_API_KEY) {
-      const te = Date.now();
-      try {
-        const pass = await estonianStructuredTextEditorPass(result.data);
-        editorApplied = pass.applied;
-        editorTokens = pass.tokens;
-      } catch (e) {
-        console.warn(`editor-pass structured text failed (continuing with unedited): ${e.message || e}`);
-      }
-      editorMs = Date.now() - te;
-    }
-    if (isTurnShape) {
-      logChoiceCostViolations(result.data, provider);
-      if (language === 'et' && GEMINI_API_KEY) {
-        const te = Date.now();
-        try {
-          const pass = await estonianEditorPass(result.data);
-          editorApplied = pass.applied;
-          editorTokens = pass.tokens;
-        } catch (e) {
-          console.warn(`editor-pass failed (continuing with unedited): ${e.message || e}`);
-        }
-        editorMs = Date.now() - te;
-      }
-    }
+    const {
+      result, retried, costRetried, coercedGameOver, editorApplied, editorMs, editorTokens,
+    } = await runGeneration({
+      callOnce,
+      editTurn: estonianEditorPass,
+      editStructured: estonianStructuredTextEditorPass,
+      editorEnabled: language === 'et' && Boolean(GEMINI_API_KEY),
+      language,
+      provider,
+      deadline,
+      minRetryMs: MIN_RETRY_BUDGET_MS,
+    });
 
     const ms = Date.now() - t0;
     const cacheHit = result.cacheHit;
@@ -440,7 +341,7 @@ app.post('/generate', async (req, res) => {
     );
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
-    if (err.name === 'AbortError') {
+    if (err.name === 'AbortError' || deadline.signal.aborted) {
       console.error('proxy: upstream timeout', { provider });
       return res.status(504).json({ error: 'Upstream timeout' });
     }
@@ -451,33 +352,10 @@ app.post('/generate', async (req, res) => {
     // Only the proxy's own errors carry a publicBody. A provider message can
     // echo request details or account state, so the client gets a generic one.
     res.status(status).json(err.publicBody || { error: 'Upstream error' });
+  } finally {
+    deadline.clear();
   }
 });
-
-// Warn in logs if any choice has no cost (all expectedChanges zero/positive)
-// or if a choice is missing expectedChanges entirely. Does not block — the AI
-// self-check is primary; this is telemetry so we can spot drift.
-function logChoiceCostViolations(turn, provider) {
-  const violations = getChoiceCostViolations(turn);
-  if (violations.length > 0) {
-    console.warn(`choice-cost violations (provider=${provider}): ${violations.join(' | ')}`);
-  }
-}
-
-function getChoiceCostViolations(turn) {
-  if (!Array.isArray(turn.choices)) return [];
-  const violations = [];
-  turn.choices.forEach((c, i) => {
-    if (c?.isAbility === true) {
-      violations.push(`choice[${i}] is marked isAbility=true; abilities must be spent through the separate player action`);
-    }
-    const changes = Array.isArray(c.expectedChanges) ? c.expectedChanges : [];
-    if (changes.length === 0) { violations.push(`choice[${i}] has no expectedChanges`); return; }
-    const hasNegative = changes.some((ch) => typeof ch.change === 'number' && ch.change < 0);
-    if (!hasNegative) violations.push(`choice[${i}] has no negative cost: ${JSON.stringify(changes)}`);
-  });
-  return violations;
-}
 
 // Estonian editor pass: send the scene (and optional gameOverText) through
 // Gemini Flash with a strict editorial prompt. Fixes invented words, wrong
@@ -510,12 +388,11 @@ const EDITOR_SCHEMA = {
   required: ['corrected'],
 };
 
-// Global budget for each editor pass.
-// nginx proxy_read_timeout is 120s; upstream AI call can use up to 115s; we
-// keep editor-pass well under the remaining margin so the total stays ≤ 120s.
+// Cap for one editor pass. The request deadline caps it too, so the pass gets
+// whatever is left of it when that is less.
 const EDITOR_TOTAL_BUDGET_MS = 25_000;
 
-async function estonianEditorPass(turnData) {
+async function estonianEditorPass(turnData, signal) {
   // Each task: { label, text, apply }. `apply(corrected)` writes the edited
   // text back to its home in turnData. Choice tasks carry their index so the
   // right element is updated.
@@ -557,16 +434,16 @@ async function estonianEditorPass(turnData) {
     });
   }
   if (tasks.length === 0) return { applied: false, tokens: 0 };
-  return runEditorTasks(tasks);
+  return runEditorTasks(tasks, signal);
 }
 
-async function estonianStructuredTextEditorPass(data) {
+async function estonianStructuredTextEditorPass(data, signal) {
   const tasks = [];
   addStoryTextTasks(tasks, data);
   addCustomStoryTextTasks(tasks, data);
   addSequelTextTasks(tasks, data);
   if (tasks.length === 0) return { applied: false, tokens: 0 };
-  return runEditorTasks(tasks);
+  return runEditorTasks(tasks, signal);
 }
 
 function addTextTask(tasks, label, text, apply, minLen = 5) {
@@ -630,7 +507,7 @@ function addParameterTextTasks(tasks, parameters, labelPrefix) {
 const EDITOR_MAX_TASKS = 40;
 const EDITOR_SYSTEM_TOKENS = Math.ceil(EDITOR_SYSTEM.length / APPROX_CHARS_PER_TOKEN);
 
-async function runEditorTasks(allTasks) {
+async function runEditorTasks(allTasks, requestSignal) {
   let tasks = allTasks;
   if (tasks.length > EDITOR_MAX_TASKS) {
     console.warn(`editor-pass capped at ${EDITOR_MAX_TASKS} of ${tasks.length} tasks; the rest stay unedited`);
@@ -646,14 +523,13 @@ async function runEditorTasks(allTasks) {
     return { applied: false, tokens: 0 };
   }
 
-  const sharedController = new AbortController();
-  const budgetTimer = setTimeout(() => sharedController.abort(), EDITOR_TOTAL_BUDGET_MS);
+  const signal = AbortSignal.any([requestSignal, AbortSignal.timeout(EDITOR_TOTAL_BUDGET_MS)]);
 
   let tokens = 0;
   try {
     const results = await Promise.all(tasks.map(async (task) => {
       try {
-        const { corrected, totalTokens } = await editorCall(task.text, sharedController.signal);
+        const { corrected, totalTokens } = await editorCall(task.text, signal);
         tokens += totalTokens;
         return { task, edited: corrected };
       } catch (e) {
@@ -667,7 +543,6 @@ async function runEditorTasks(allTasks) {
       if (edited && edited.length > 0) task.apply(edited);
     }
   } finally {
-    clearTimeout(budgetTimer);
     usageLimiter.adjustGlobalBudget(tokens);
   }
   return { applied: true, tokens };
@@ -730,7 +605,7 @@ function normalizeSchemaForClaude(node) {
   return node;
 }
 
-async function callClaude({ prompt, schema, systemPrompt, model }) {
+async function callClaude({ prompt, schema, systemPrompt, model, signal }) {
   const claudeModel = model || CLAUDE_MODEL;
   if (!anthropic) {
     const err = new Error('Claude not configured on this proxy');
@@ -754,7 +629,7 @@ async function callClaude({ prompt, schema, systemPrompt, model }) {
   if (systemPrompt) {
     createParams.system = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
   }
-  const message = await anthropic.messages.create(createParams, { timeout: UPSTREAM_TIMEOUT_MS });
+  const message = await anthropic.messages.create(createParams, { signal });
 
   const toolUse = message.content.find((b) => b.type === 'tool_use');
   if (!toolUse || typeof toolUse.input !== 'object') {
@@ -765,7 +640,7 @@ async function callClaude({ prompt, schema, systemPrompt, model }) {
   return { model: claudeModel, data: toolUse.input, cacheHit, tokens: { in: usage?.input_tokens || 0, out: usage?.output_tokens || 0 } };
 }
 
-async function callGemini({ prompt, schema, systemPrompt, model }) {
+async function callGemini({ prompt, schema, systemPrompt, model, signal }) {
   const geminiModel = model || GEMINI_MODEL;
   if (!GEMINI_API_KEY) {
     const err = new Error('Gemini not configured on this proxy');
@@ -773,58 +648,52 @@ async function callGemini({ prompt, schema, systemPrompt, model }) {
     err.publicBody = { error: err.message };
     throw err;
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
-  try {
-    const geminiBody = {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: schema,
-        temperature: 0.8,
-        maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
-      },
-      safetySettings: GEMINI_SAFETY_SETTINGS,
-    };
-    if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
-    const upstream = await fetch(geminiUrl(geminiModel), {
-      method: 'POST',
-      headers: geminiHeaders(),
-      body: JSON.stringify(geminiBody),
-      signal: controller.signal,
-    });
-    const body = await upstream.json();
-    if (!upstream.ok) {
-      const err = new Error(body?.error?.message || 'Gemini upstream error');
-      err.status = upstream.status;
-      throw err;
-    }
-    let text;
-    let usageMetadata;
-    let data;
-    try {
-      ({ text, usageMetadata } = parseGeminiResponse(body));
-      data = JSON.parse(text);
-    } catch (e) {
-      // A blocked, truncated or unparsable response is still billed.
-      e.totalTokens = Number(body?.usageMetadata?.totalTokenCount) || 0;
-      throw e;
-    }
-    const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
-    return {
-      model: geminiModel,
-      data,
-      cacheHit: cachedTokens > 0 ? `${cachedTokens}tok` : null,
-      tokens: {
-        in: usageMetadata.promptTokenCount || 0,
-        out: usageMetadata.candidatesTokenCount || 0,
-        thoughts: usageMetadata.thoughtsTokenCount || 0,
-        total: usageMetadata.totalTokenCount || 0,
-      },
-    };
-  } finally {
-    clearTimeout(timer);
+  const geminiBody = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: schema,
+      temperature: 0.8,
+      maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+    },
+    safetySettings: GEMINI_SAFETY_SETTINGS,
+  };
+  if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
+  const upstream = await fetch(geminiUrl(geminiModel), {
+    method: 'POST',
+    headers: geminiHeaders(),
+    body: JSON.stringify(geminiBody),
+    signal,
+  });
+  const body = await upstream.json();
+  if (!upstream.ok) {
+    const err = new Error(body?.error?.message || 'Gemini upstream error');
+    err.status = upstream.status;
+    throw err;
   }
+  let text;
+  let usageMetadata;
+  let data;
+  try {
+    ({ text, usageMetadata } = parseGeminiResponse(body));
+    data = JSON.parse(text);
+  } catch (e) {
+    // A blocked, truncated or unparsable response is still billed.
+    e.totalTokens = Number(body?.usageMetadata?.totalTokenCount) || 0;
+    throw e;
+  }
+  const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
+  return {
+    model: geminiModel,
+    data,
+    cacheHit: cachedTokens > 0 ? `${cachedTokens}tok` : null,
+    tokens: {
+      in: usageMetadata.promptTokenCount || 0,
+      out: usageMetadata.candidatesTokenCount || 0,
+      thoughts: usageMetadata.thoughtsTokenCount || 0,
+      total: usageMetadata.totalTokenCount || 0,
+    },
+  };
 }
 
 app.listen(PORT, () => {
