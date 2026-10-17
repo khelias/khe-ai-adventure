@@ -26,6 +26,9 @@ product docs; infrastructure is in `khe-homelab`.
   `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
   `public/fonts/OFL.txt`). No request goes to Google. `vite build` writes the
   bundled dependencies' licenses to `dist/third-party-licenses.md`.
+- The stack moves on its own schedule and shares no code package with the
+  other app repos
+  ([estate ADR-002](https://github.com/khelias/khe-architecture/blob/main/decisions/002-independent-stacks.md)).
 
 ## Commands
 
@@ -136,6 +139,10 @@ sticky hover; a tappable's touch feedback is its `:active` rule.
    runs in production. CodeQL is not required here, and its one
    `js/system-prompt-injection` alert on `proxy/server.js` is knowingly open
    per ADR 0006. A second alert is the signal worth acting on.
+7. **The proxy serves only this game.** Another app that adds AI output
+   copies the guard pattern into its own backend; the proxy does not become
+   a shared AI service
+   ([estate ADR-003](https://github.com/khelias/khe-architecture/blob/main/decisions/003-adventure-proxy-stays-adventure-only.md)).
 
 ## Product invariants
 
