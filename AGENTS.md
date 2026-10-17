@@ -218,3 +218,14 @@ Rollback is a khe-homelab change: pin both images to the same
 `sha-<full commit>@sha256:<digest>` of a known good commit, never one image
 alone (invariant 2). The pin job then leaves the pins alone until they are
 back on `:main@`. The procedure is in khe-homelab's `AGENTS.md`.
+
+Automated writers
+([estate ADR-007](https://github.com/khelias/khe-architecture/blob/main/decisions/007-automated-writers.md)): Renovate
+automerges npm patch and minor updates of stable packages, 0.x patches of
+devDependencies, GitHub Actions minor and patch updates, digests, pins and
+lock file maintenance (`renovate.json`, the image scanner excepted), and
+every merge to `main` publishes images that the pin App deploys. The way
+back from a bad one is to revert its commit on `main` and push, which
+publishes and pins the previous code; when that is too slow, the `sha-`
+rollback above. A new automated writer joins the estate's writer register
+in khe-meta in the same change.
