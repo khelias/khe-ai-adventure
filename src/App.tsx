@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useGameStore } from './store/gameStore'
-import { LangToggle } from './components/LangToggle'
+import { SiteHeader } from '@khelias/ui/react'
 import { translations } from './i18n/translations'
 import { hrefWithLanguage, persistLanguagePreference } from './i18n/language'
 import { SetupScreen } from './components/SetupScreen'
@@ -13,6 +13,7 @@ import { GameOverScreen } from './components/GameOverScreen'
 export default function App() {
   const screen = useGameStore((s) => s.screen)
   const language = useGameStore((s) => s.settings.language)
+  const setSetting = useGameStore((s) => s.setSetting)
   const strings = translations[language]
   const contentClassName =
     screen === 'game' || screen === 'gameOver'
@@ -32,27 +33,17 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="app-header__inner">
-          <div className="app-header__left">
-            <a
-              href={gamesHomeHref}
-              className="app-brand-link"
-              aria-label={strings.kheHomeAria}
-            >
-              <span>KHE</span>
-              <span className="app-brand-link__suffix">.ee</span>
-            </a>
-            <div className="app-header__context" aria-current="page">
-              <span>KHE Games</span>
-              <strong>{strings.appHeaderTitle}</strong>
-            </div>
-          </div>
-          <div className="app-header__actions">
-            <LangToggle />
-          </div>
-        </div>
-      </header>
+      <SiteHeader
+        brand={{ href: gamesHomeHref, label: strings.kheHomeAria }}
+        context={{ kicker: 'KHE Games', title: strings.appHeaderTitle }}
+        locales={[
+          { code: 'et', label: 'ET', attrs: { title: strings.languageEstonian } },
+          { code: 'en', label: 'EN', attrs: { title: strings.languageEnglish } },
+        ]}
+        activeLocale={language}
+        languageLabel={strings.languageToggleLabel}
+        onLocaleChange={(next) => setSetting('language', next)}
+      />
 
       <main className={screen === 'setup' ? 'app-main app-main--setup' : 'app-main'}>
         {screen === 'setup' ? (

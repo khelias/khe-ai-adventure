@@ -54,6 +54,11 @@
       "matchPackageNames": ["anchore/grype", "ghcr.io/anchore/grype"],
       "minimumReleaseAge": "7 days",
       "automerge": false
+    },
+    {
+      "description": "@khelias/ui is never automerged: each header release is reviewed and merged here, on this app's own schedule (estate ADR-014).",
+      "matchPackageNames": ["@khelias/ui"],
+      "automerge": false
     }
   ],
   "lockFileMaintenance": {

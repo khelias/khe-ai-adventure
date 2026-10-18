@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@khelias/ui/site-header.css";
 
 /* Self-hosted so no visitor data reaches Google before consent. Subsets and
    unicode ranges as Google Fonts serves them; latin-ext carries š and ž.
@@ -203,108 +204,24 @@ button {
   padding-top: env(safe-area-inset-top);
 }
 
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  border-bottom: 1px solid var(--line);
-  background: rgba(10, 9, 19, 0.86);
-  backdrop-filter: blur(18px);
-}
+/* The KHE site header (<SiteHeader> from @khelias/ui): the violet stage's
+   palette as the package's properties. Inter is loaded up to 600, and the
+   muted is lighter than --text-muted, which reads below 4.5:1 here. */
+.site-header {
+  --khe-header-bg: rgba(10, 9, 19, 0.86);
+  --khe-header-border: var(--line);
+  --khe-header-text: var(--text);
+  --khe-header-text-muted: #8f8bb0;
+  --khe-header-focus: var(--accent);
 
-.app-header__inner {
-  width: 100%;
-  max-width: 1180px;
-  min-height: 3.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0 auto;
-  padding: 0.45rem max(1rem, env(safe-area-inset-right)) 0.45rem max(1rem, env(safe-area-inset-left));
-}
+  --khe-header-brand-border: var(--line-accent);
+  --khe-header-brand-border-hover: rgba(165, 180, 252, 0.42);
 
-.app-header__left {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.app-header__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-.app-brand-link {
-  min-width: 3.35rem;
-  height: 2.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.025em;
-  flex-shrink: 0;
-  border: 1px solid var(--line-accent);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  color: var(--text-dim);
-  font: 800 0.78rem/1 'Inter', system-ui;
-  letter-spacing: 0;
-  text-decoration: none;
-  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.24);
-  transition: border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
-}
-
-.app-brand-link__suffix {
-  display: inline-block;
-  color: #fb4b57;
-  font-size: 0.58em;
-  font-weight: 800;
-  line-height: 1;
-  transform: translateY(0.26em);
-}
-
-.app-brand-link:focus-visible,
-.app-brand-link:active {
-  transform: translateY(-1px);
-  border-color: rgba(165, 180, 252, 0.42);
-  color: var(--text);
-  outline: none;
-}
-@media (hover: hover) and (pointer: fine) {
-  .app-brand-link:hover {
-    transform: translateY(-1px);
-    border-color: rgba(165, 180, 252, 0.42);
-    color: var(--text);
-    outline: none;
-  }
-}
-
-.app-header__context {
-  min-width: 0;
-  display: grid;
-  gap: 0.16rem;
-}
-
-.app-header__context span {
-  overflow: hidden;
-  color: var(--text-muted);
-  font: 800 0.62rem/1 'Inter', system-ui;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.app-header__context strong {
-  overflow: hidden;
-  color: var(--text);
-  font: 760 0.9rem/1 'Inter', system-ui;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  --khe-header-switcher-border: var(--line);
+  --khe-header-switcher-bg: rgba(255, 255, 255, 0.025);
+  --khe-header-button-tracking: 0.1em;
+  --khe-header-button-pressed-bg: var(--accent-deep);
+  --khe-header-button-pressed-border: var(--accent);
 }
 
 .app-main {
@@ -326,39 +243,6 @@ button {
 
 .app-content--play {
   max-width: 42rem;
-}
-
-.lang-toggle {
-  display: inline-flex;
-  gap: 0.2rem;
-  padding: 0.18rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255,255,255,0.025);
-}
-
-.lang-toggle__btn {
-  min-width: 2.75rem;
-  min-height: 2.4rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font: 650 0.7rem/1 'Inter', system-ui;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.lang-toggle__btn.active {
-  border-color: var(--accent);
-  background: var(--accent-deep);
-  color: #f5f3ff;
-}
-.lang-toggle__btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 
 /* ════════════════════════════════════════════
@@ -2893,11 +2777,6 @@ button {
 }
 
 @media (max-width: 760px) {
-  .app-header__inner {
-    min-height: 3.75rem;
-    padding-top: 0.4rem;
-    padding-bottom: 0.4rem;
-  }
   .app-main {
     padding: 0.85rem max(0.875rem, env(safe-area-inset-right)) calc(1.75rem + env(safe-area-inset-bottom)) max(0.875rem, env(safe-area-inset-left));
   }
@@ -2906,18 +2785,6 @@ button {
   .btn-begin,
   .btn-ghost {
     min-height: 3rem;
-  }
-  .app-header__left {
-    gap: 0.55rem;
-  }
-  .app-brand-link {
-    min-width: 3.05rem;
-    height: 2.6rem;
-    font-size: 0.7rem;
-  }
-  .lang-toggle__btn {
-    min-width: 2.65rem;
-    min-height: 2.5rem;
   }
   .setup-wrap {
     padding: 0.45rem 0 4.75rem;

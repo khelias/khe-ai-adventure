@@ -28,9 +28,12 @@ product docs; infrastructure is in `khe-homelab`.
   bundled dependencies' licenses to `dist/third-party-licenses.md`.
 - The stack moves on its own schedule. Code shared with the other app repos
   comes only as a versioned presentation package. The KHE site header is
-  moving to `@khelias/ui` from khe-ui; once it is a dependency here, it
-  is pinned and Renovate never automerges it
+  `<SiteHeader>` from `@khelias/ui` (khe-ui), pinned exactly and never
+  automerged by Renovate
   ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md)).
+  `App.tsx` wires it to the store's `language`; the violet palette is the
+  `--khe-header-*` properties on `.site-header` in `src/index.css`. A header
+  release changes every `ui:smoke` baseline that shows the header.
 
 ## Commands
 
