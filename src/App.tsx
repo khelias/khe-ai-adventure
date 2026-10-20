@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useGameStore } from './store/gameStore'
-import { SiteHeader } from '@khelias/ui/react'
+import { SiteFooter, SiteHeader } from '@khelias/ui/react'
 import { translations } from './i18n/translations'
 import { hrefWithLanguage, persistLanguagePreference } from './i18n/language'
 import { SetupScreen } from './components/SetupScreen'
@@ -59,17 +59,15 @@ export default function App() {
         )}
       </main>
 
-      <footer className="adventure-footer">
-        <nav aria-label={strings.footerLinksLabel}>
-          <a href="https://github.com/khelias/khe-ai-adventure">GitHub</a>
-          <span aria-hidden="true">·</span>
-          <a href="https://www.linkedin.com/in/kaido-henrik-elias/">LinkedIn</a>
-          <span aria-hidden="true">·</span>
-          <a href={privacyHref}>{strings.footerPrivacyLink}</a>
-        </nav>
-        <span>{strings.footerAiDisclosure}</span>
-        <span>{strings.footerHosting}</span>
-      </footer>
+      <SiteFooter
+        label={strings.footerLinksLabel}
+        links={[
+          { label: 'GitHub', href: 'https://github.com/khelias/khe-ai-adventure', icon: 'github' },
+          { label: 'LinkedIn', href: 'https://www.linkedin.com/in/kaido-henrik-elias/', icon: 'linkedin' },
+          { label: strings.footerPrivacyLink, href: privacyHref },
+        ]}
+        lines={[{ text: strings.footerAiDisclosure }, { text: strings.footerHosting }]}
+      />
     </div>
   )
 }

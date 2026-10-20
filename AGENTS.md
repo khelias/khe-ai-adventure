@@ -32,15 +32,21 @@ product docs; infrastructure is in `khe-homelab`.
   automerged by Renovate
   ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md)).
   `App.tsx` wires it to the store's `language`; the header values are the
-  `--khe-header-*` properties on `.site-header` in `src/index.css`. A header
-  release changes every `ui:smoke` baseline that shows the header.
+  `--khe-header-*` properties on `.site-header` in `src/index.css`. The
+  footer is `<SiteFooter>` from the same package
+  ([estate ADR-017](https://github.com/khelias/khe-architecture/blob/main/decisions/017-shared-theme-toggle-and-footer.md)):
+  `App.tsx` passes GitHub, LinkedIn and Privacy, then the AI disclosure and
+  the hosting line from `src/i18n/translations.ts`; `src/index.css` places
+  it and sets its `--khe-footer-*` values from the app's tokens. A header or
+  footer release changes every `ui:smoke` baseline that shows it.
 - The look follows the KHE family layer
   ([estate ADR-015](https://github.com/khelias/khe-architecture/blob/main/decisions/015-family-design-layer.md)):
   AI Seiklus is a game inside the Games room, its header is the family chrome
   and the game screens keep their own violet stage as application content.
   The game is dark by design, a content theme committed to one setting, so
   its header takes the family's dark values (khe-sites `DESIGN.md`) whatever
-  the system prefers, with the `.ee` in the app's violet.
+  the system prefers, with the `.ee` in the app's violet. As a room
+  committed to one theme it shows no theme toggle (estate ADR-017).
 
 ## Commands
 

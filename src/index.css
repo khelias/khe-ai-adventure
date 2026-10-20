@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@khelias/ui/site-header.css";
+@import "@khelias/ui/site-footer.css";
 
 /* Self-hosted so no visitor data reaches Google before consent. Subsets and
    unicode ranges as Google Fonts serves them; latin-ext carries š and ž.
@@ -1208,45 +1209,13 @@ button {
   letter-spacing: 0.06em;
 }
 
-.adventure-footer {
+.site-footer {
+  --khe-footer-text: var(--text-faint);
+  --khe-footer-text-hover: var(--text-muted);
+  --khe-footer-focus: var(--line-accent);
   width: 100%;
   margin-top: auto;
   padding: 0 max(1rem, env(safe-area-inset-right)) calc(1.2rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-  display: grid;
-  gap: 0.45rem;
-  text-align: center;
-  color: var(--text-faint);
-  font-size: 0.7rem;
-  font-weight: 300;
-  letter-spacing: 0;
-}
-
-.adventure-footer nav {
-  display: inline-flex;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.adventure-footer a {
-  color: var(--text-faint);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.adventure-footer a:focus-visible,
-.adventure-footer a:active {
-  color: var(--text-muted);
-}
-@media (hover: hover) and (pointer: fine) {
-  .adventure-footer a:hover {
-    color: var(--text-muted);
-  }
-}
-
-.adventure-footer a:focus-visible {
-  outline: 2px solid var(--line-accent);
-  outline-offset: 3px;
-  border-radius: 6px;
 }
 
 /* Shared ghost-link button: tertiary actions, italic Fraunces, muted.
@@ -3041,12 +3010,9 @@ button {
   .model-corner__panel {
     width: min(15rem, calc(100vw - 2rem));
   }
-  .adventure-footer {
+  .site-footer {
     padding-right: max(0.875rem, env(safe-area-inset-right));
     padding-left: max(0.875rem, env(safe-area-inset-left));
-  }
-  .adventure-footer nav {
-    flex-wrap: wrap;
   }
 }
 
