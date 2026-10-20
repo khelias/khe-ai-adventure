@@ -31,9 +31,16 @@ product docs; infrastructure is in `khe-homelab`.
   `<SiteHeader>` from `@khelias/ui` (khe-ui), pinned exactly and never
   automerged by Renovate
   ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md)).
-  `App.tsx` wires it to the store's `language`; the violet palette is the
+  `App.tsx` wires it to the store's `language`; the header values are the
   `--khe-header-*` properties on `.site-header` in `src/index.css`. A header
   release changes every `ui:smoke` baseline that shows the header.
+- The look follows the KHE family layer
+  ([estate ADR-015](https://github.com/khelias/khe-architecture/blob/main/decisions/015-family-design-layer.md)):
+  AI Seiklus is a game inside the Games room, its header is the family chrome
+  and the game screens keep their own violet stage as application content.
+  The game is dark by design, a content theme committed to one setting, so
+  its header takes the family's dark values (khe-sites `DESIGN.md`) whatever
+  the system prefers, with the `.ee` in the app's violet.
 
 ## Commands
 

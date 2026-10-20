@@ -204,24 +204,33 @@ button {
   padding-top: env(safe-area-inset-top);
 }
 
-/* The KHE site header (<SiteHeader> from @khelias/ui): the violet stage's
-   palette as the package's properties. Inter is loaded up to 600, and the
-   muted is lighter than --text-muted, which reads below 4.5:1 here. */
+/* The KHE site header (<SiteHeader> from @khelias/ui) on the KHE family's dark
+   values (khe-sites DESIGN.md, estate ADR-015), whatever the system prefers:
+   the game is dark by design. The .ee is the app's own violet. */
 .site-header {
-  --khe-header-bg: rgba(10, 9, 19, 0.86);
-  --khe-header-border: var(--line);
-  --khe-header-text: var(--text);
-  --khe-header-text-muted: #8f8bb0;
+  --fam-paper: #0b0d0d; --fam-surface: #121615; --fam-ink: #eef1f0;
+  --fam-muted: #8a928f; --fam-rule: #232827; --fam-rule-strong: #3a413f;
+
+  --khe-header-title-font: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+  --khe-header-bg: var(--fam-paper);
+  --khe-header-blur: 0px;
+  --khe-header-border: var(--fam-rule);
+  --khe-header-text: var(--fam-ink);
+  --khe-header-text-muted: var(--fam-muted);
   --khe-header-focus: var(--accent);
 
-  --khe-header-brand-border: var(--line-accent);
-  --khe-header-brand-border-hover: rgba(165, 180, 252, 0.42);
+  --khe-header-brand-border: var(--fam-rule-strong);
+  --khe-header-brand-border-hover: var(--fam-muted);
+  --khe-header-brand-bg: var(--fam-paper);
+  --khe-header-brand-shadow: none;
+  --khe-header-suffix: var(--accent);
 
-  --khe-header-switcher-border: var(--line);
-  --khe-header-switcher-bg: rgba(255, 255, 255, 0.025);
-  --khe-header-button-tracking: 0.1em;
-  --khe-header-button-pressed-bg: var(--accent-deep);
-  --khe-header-button-pressed-border: var(--accent);
+  --khe-header-switcher-radius: 999px;
+  --khe-header-switcher-border: var(--fam-rule);
+  --khe-header-switcher-bg: var(--fam-surface);
+  --khe-header-button-radius: 999px;
+  --khe-header-button-pressed-bg: var(--fam-paper);
+  --khe-header-button-pressed-border: var(--fam-rule-strong);
 }
 
 .app-main {
