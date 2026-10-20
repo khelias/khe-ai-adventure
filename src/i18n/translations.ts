@@ -145,6 +145,7 @@ interface StringTable {
   errorStart: (msg: string) => string
   errorSequel: (msg: string) => string
   errorCustom: (msg: string) => string
+  aiUnavailable: string
   // Secrets
   secretsKicker: string
   secretsAssignIntro: string
@@ -333,6 +334,7 @@ export const translations: Record<Language, StringTable> = {
     errorStart: (msg) => `Mängu alustamisel tekkis viga: ${msg}`,
     errorSequel: (msg) => `Järjeloo genereerimisel tekkis viga: ${msg}`,
     errorCustom: (msg) => `Uue loo genereerimisel tekkis viga: ${msg}`,
+    aiUnavailable: 'AI pole praegu saadaval. Proovi hiljem uuesti.',
     secretsKicker: 'saladused',
     secretsAssignIntro: 'Igaüks saab ühe salajase eesmärgi. Teised ei tohi näha.',
     secretsAssignWarning: 'Teised, pöörake selg. Ära piilu üle õla.',
@@ -541,6 +543,7 @@ export const translations: Record<Language, StringTable> = {
       `An error occurred while generating the sequel: ${msg}`,
     errorCustom: (msg) =>
       `An error occurred while generating the new story: ${msg}`,
+    aiUnavailable: 'The AI is unavailable right now. Try again later.',
     secretsKicker: 'secrets',
     secretsAssignIntro: 'Each player gets one secret goal. No one else may see it.',
     secretsAssignWarning: 'Others, turn your backs. No peeking over the shoulder.',

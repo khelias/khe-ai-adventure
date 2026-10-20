@@ -1,5 +1,6 @@
 import type { Language, Provider } from '../game/types'
 import { callMockAI } from './mockAdventure'
+import { errorFromResponse, fetchProxy, isRecord } from './proxyErrors'
 import { resolveApiSecret } from './runtimeConfig'
 
 const API_URL = '/adventure/api/generate'
@@ -10,15 +11,6 @@ const API_URL = '/adventure/api/generate'
 export type JsonSchema = Record<string, unknown>
 
 const secret = resolveApiSecret(window.__ADVENTURE_CONFIG__, import.meta.env.VITE_API_SECRET)
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object'
-}
-
-function errorMessageFromPayload(value: unknown): string | null {
-  if (!isRecord(value) || typeof value.error !== 'string') return null
-  return value.error
-}
 
 async function generateSignature(payloadStr: string): Promise<string> {
   if (!secret) return ''
@@ -58,17 +50,14 @@ export async function callAI<T = unknown>(
     headers['x-adventure-signature'] = sig
   }
 
-  const response = await fetch(API_URL, {
+  const response = await fetchProxy(API_URL, {
     method: 'POST',
     headers,
     body: payloadStr,
   })
 
   if (!response.ok) {
-    const errorData: unknown = await response
-      .json()
-      .catch(() => ({ error: 'Invalid JSON response from server' }))
-    throw new Error(errorMessageFromPayload(errorData) ?? `Request failed with status ${response.status}`)
+    throw await errorFromResponse(response)
   }
 
   const result: unknown = await response.json()

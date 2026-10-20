@@ -215,6 +215,14 @@ CI's `publish` job, on push to main after `App quality` and `Images`, pushes
 SBOM, provenance and an attestation, then moves both `main` tags in one step
 ([estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)). Nothing in this repo touches the VM.
 
+The web image's build is also copied hourly to the Cloudflare edge fallback
+([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)),
+which serves `/adventure/` when the homelab is down, so nothing secret goes
+into the static build: the secret reaches the browser only through the
+`config.js` the container writes at start, and the copy carries a stub
+without it. With the proxy down, a turn shows `aiUnavailable`
+(`src/api/proxyErrors.ts`).
+
 khe-homelab pins both images as `:main@sha256:<digest>` in
 `services/apps/games/docker-compose.yml`. After `publish`, the `Pin homelab`
 job runs `scripts/pin-homelab.sh` with a token of the `khe-adventure-pins`

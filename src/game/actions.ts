@@ -1,4 +1,5 @@
 import { callAI } from '../api/adventure'
+import { ProxyUnavailableError } from '../api/proxyErrors'
 import { useGameStore } from '../store/gameStore'
 import { translations } from '../i18n/translations'
 import {
@@ -35,8 +36,9 @@ function t() {
   return translations[useGameStore.getState().settings.language]
 }
 
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
+function errorText(err: unknown, describe: (msg: string) => string): string {
+  if (err instanceof ProxyUnavailableError) return t().aiUnavailable
+  return describe(err instanceof Error ? err.message : String(err))
 }
 
 // Build a single turn record for the transcript. Each AI call (kickoff,
@@ -176,7 +178,7 @@ export async function generateStories(): Promise<void> {
     )
     store.setAvailableStories(stories)
   } catch (err) {
-    store.setError(t().errorStart(errorMessage(err)))
+    store.setError(errorText(err, t().errorStart))
   } finally {
     store.setLoading(false)
   }
@@ -207,7 +209,7 @@ export async function generateCustomStory(storyText: string): Promise<void> {
       parameters: response.parameters,
     })
   } catch (err) {
-    store.setError(t().errorCustom(errorMessage(err)))
+    store.setError(errorText(err, t().errorCustom))
   } finally {
     store.setLoading(false)
   }
@@ -244,7 +246,7 @@ export async function generateSequel(sequelText: string): Promise<void> {
       parameters: response.newParameters,
     })
   } catch (err) {
-    state.setError(t().errorSequel(errorMessage(err)))
+    state.setError(errorText(err, t().errorSequel))
   } finally {
     state.setLoading(false)
   }
@@ -456,7 +458,7 @@ export async function handlePlayerChoice(
       parameterEvents,
     })
   } catch (err) {
-    store.setError(t().errorApi(errorMessage(err)))
+    store.setError(errorText(err, t().errorApi))
   } finally {
     store.setLoading(false)
   }
