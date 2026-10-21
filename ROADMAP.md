@@ -116,6 +116,10 @@ transcripts show the rule is ineffective or redundant.
   ability-parameter alignment.
 - Store a small set of canonical transcripts for regression comparison.
 - Add model matrix scripts so candidate comparisons are repeatable.
+- Make `ui:smoke` deterministic: `src/game/secrets.ts` deals secrets with
+  unseeded `Math.random`, so the winner line in the `mobile-game-over`
+  baseline changes between runs and the smoke fails about half the time
+  locally (seen 2026-10-21).
 
 #### Eval pipeline (incremental)
 
