@@ -134,11 +134,6 @@
         cursor: pointer;
         font: 650 0.76rem/1 Inter, system-ui, sans-serif;
       }
-      .khe-analytics-actions button[data-consent-choice="granted"] {
-        border-color: #f8fafc;
-        background: #f8fafc;
-        color: #0c0d0f;
-      }
       .khe-analytics-actions button:disabled {
         cursor: default;
         opacity: 0.72;

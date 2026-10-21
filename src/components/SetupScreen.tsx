@@ -255,13 +255,12 @@ export function SetupScreen() {
               </div>
 
               <div className="setup-duration-intro">
-                <h3 className="setup-tell-header">{strings.setupBasicsHeader}</h3>
+                <h3 id="setup-duration-header" className="setup-tell-header">{strings.setupBasicsHeader}</h3>
                 <p className="setup-context-hint">{strings.setupBasicsHint}</p>
               </div>
 
               <div className="setup-section setup-section--inline">
-                <span className="setup-label">{strings.durationQuestion}</span>
-                <div className="seg-group">
+                <div className="seg-group" role="group" aria-labelledby="setup-duration-header">
                   {DURATION_OPTIONS.map((d) => {
                     const durationParts = getDurationParts(d.labelKey)
 
