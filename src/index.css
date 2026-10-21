@@ -206,11 +206,14 @@ button {
 }
 
 /* The KHE site header (<SiteHeader> from @khelias/ui) on the KHE family's dark
-   values (khe-sites DESIGN.md, estate ADR-015), whatever the system prefers:
-   the game is dark by design. The .ee is the app's own violet. */
+   values (khe-sites DESIGN.md, estate ADR-018), whatever the system prefers:
+   the game is dark by design, and <html data-theme="dark"> gives the rooms
+   list's dots, the package's own, their dark values too. The .ee is the app's
+   own violet. */
 .site-header {
   --fam-paper: #0b0d0d; --fam-surface: #121615; --fam-ink: #eef1f0;
   --fam-muted: #8a928f; --fam-rule: #232827; --fam-rule-strong: #3a413f;
+  --fam-sunken: #0f1211;
 
   --khe-header-title-font: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
   --khe-header-bg: var(--fam-paper);
@@ -232,6 +235,11 @@ button {
   --khe-header-button-radius: 999px;
   --khe-header-button-pressed-bg: var(--fam-paper);
   --khe-header-button-pressed-border: var(--fam-rule-strong);
+
+  --khe-header-menu-bg: var(--fam-surface);
+  --khe-header-menu-border: var(--fam-rule-strong);
+  --khe-header-menu-shadow: 0 12px 32px rgb(0 0 0 / 0.14);
+  --khe-header-menu-current-bg: var(--fam-sunken);
 }
 
 .app-main {

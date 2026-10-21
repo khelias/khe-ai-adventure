@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:unit": "TSX_TSCONFIG_PATH=tsconfig.app.json node --import tsx --test tests/unit/*.test.ts",
     "playtest": "tsx scripts/playtest.ts",
     "eval": "tsx scripts/eval/check.ts",
     "eval:gate": "tsx scripts/eval/check.ts --threshold=0.95 --threshold=choice_has_cost=0.75",
@@ -17,7 +17,7 @@
     "schema:hashes": "tsx scripts/schema-hashes.ts"
   },
   "dependencies": {
-    "@khelias/ui": "0.2.0",
+    "@khelias/ui": "0.3.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^5.0.12"

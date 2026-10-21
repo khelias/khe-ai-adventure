@@ -31,7 +31,8 @@ product docs; infrastructure is in `khe-homelab`.
   `<SiteHeader>` from `@khelias/ui` (khe-ui), pinned exactly and never
   automerged by Renovate
   ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md)).
-  `App.tsx` wires it to the store's `language`; the header values are the
+  `src/components/AppSiteHeader.tsx` renders it and `App.tsx` wires it to
+  the store's `language`; the header values are the
   `--khe-header-*` properties on `.site-header` in `src/index.css`. The
   footer is `<SiteFooter>` from the same package
   ([estate ADR-017](https://github.com/khelias/khe-architecture/blob/main/decisions/017-shared-theme-toggle-and-footer.md)):
@@ -40,12 +41,15 @@ product docs; infrastructure is in `khe-homelab`.
   it and sets its `--khe-footer-*` values from the app's tokens. A header or
   footer release changes every `ui:smoke` baseline that shows it.
 - The look follows the KHE family layer
-  ([estate ADR-015](https://github.com/khelias/khe-architecture/blob/main/decisions/015-family-design-layer.md)):
+  ([estate ADR-018](https://github.com/khelias/khe-architecture/blob/main/decisions/018-rooms-menu-in-the-shared-header.md)):
   AI Seiklus is a game inside the Games room, its header is the family chrome
-  and the game screens keep their own violet stage as application content.
+  with the rooms menu (Mängud current, the game's name after the slash, the
+  mark to the khe.ee front page), and
+  the game screens keep their own violet stage as application content.
   The game is dark by design, a content theme committed to one setting, so
   its header takes the family's dark values (khe-sites `DESIGN.md`) whatever
-  the system prefers, with the `.ee` in the app's violet. As a room
+  the system prefers, with the `.ee` in the app's violet, and `<html>`
+  carries `data-theme="dark"` so the package's dots follow. As a room
   committed to one theme it shows no theme toggle (estate ADR-017).
 
 ## Commands
@@ -53,7 +57,8 @@ product docs; infrastructure is in `khe-homelab`.
 - `npm run dev` - frontend dev server; proxies `/adventure/api/` to live
 - `npm run build` - `tsc -b && vite build`
 - `npm run lint` - ESLint with type-aware rules
-- `npm run test:unit` - node:test via tsx
+- `npm run test:unit` - node:test via tsx, which takes JSX settings from
+  `tsconfig.app.json` so a test can render a component
 - `npm run ui:smoke` - headless Playwright against the Mock provider;
   `PLAYWRIGHT_BASE_URL` reuses a running server instead of starting one,
   `PLAYWRIGHT_BROWSER_CHANNEL` picks a local browser over bundled Chromium
@@ -92,7 +97,9 @@ proxy telemetry, not one attractive run.
 compares the linux set, so regenerate it inside
 `mcr.microsoft.com/playwright:v<version>-noble` matching the installed
 `@playwright/test`, with `npx playwright test tests/ui-smoke.spec.ts
---update-snapshots`. `mobile-game-over.png` renders slightly differently
+--update-snapshots=all` (plain `--update-snapshots` rewrites only those past
+the tolerance), on a copy without `node_modules` so the container's `npm ci`
+leaves the host's alone. `mobile-game-over.png` renders slightly differently
 from run to run, so regenerating it only adds noise; leave it unless the
 screen changed.
 
@@ -119,7 +126,8 @@ docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts,
                pin-homelab.sh (CI's homelab pin PR), README.md
 tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,proxy-limits,
-               proxy-generation,gemini-response,sheet-motion}.test.ts
+               proxy-generation,gemini-response,sheet-motion,
+               site-header}.test.ts
 ```
 
 `:hover` rules in `src/index.css` live inside

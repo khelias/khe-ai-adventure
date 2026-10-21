@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { useGameStore } from './store/gameStore'
-import { SiteFooter, SiteHeader } from '@khelias/ui/react'
+import { SiteFooter } from '@khelias/ui/react'
 import { translations } from './i18n/translations'
 import { hrefWithLanguage, persistLanguagePreference } from './i18n/language'
+import { AppSiteHeader } from './components/AppSiteHeader'
 import { SetupScreen } from './components/SetupScreen'
 import { StoryChoiceScreen } from './components/StoryChoiceScreen'
 import { RoleAssignmentScreen } from './components/RoleAssignmentScreen'
@@ -19,7 +20,6 @@ export default function App() {
     screen === 'game' || screen === 'gameOver'
       ? 'app-content app-content--play'
       : 'app-content'
-  const gamesHomeHref = hrefWithLanguage('/', language)
   const privacyHref = hrefWithLanguage('/privacy', language)
 
   useEffect(() => {
@@ -33,17 +33,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <SiteHeader
-        brand={{ href: gamesHomeHref, label: strings.kheHomeAria }}
-        context={{ kicker: 'KHE Games', title: strings.appHeaderTitle }}
-        locales={[
-          { code: 'et', label: 'ET', attrs: { title: strings.languageEstonian } },
-          { code: 'en', label: 'EN', attrs: { title: strings.languageEnglish } },
-        ]}
-        activeLocale={language}
-        languageLabel={strings.languageToggleLabel}
-        onLocaleChange={(next) => setSetting('language', next)}
-      />
+      <AppSiteHeader language={language} onLanguageChange={(next) => setSetting('language', next)} />
 
       <main className={screen === 'setup' ? 'app-main app-main--setup' : 'app-main'}>
         {screen === 'setup' ? (
