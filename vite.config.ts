@@ -31,6 +31,11 @@ export default defineConfig(({ command }) => {
             ? { rewrite: (path) => path.replace(/^\/adventure\/api/, '') }
             : {}),
         },
+        // The consent banner is khe-sites', served at the games.khe.ee root (estate ADR-019).
+        '/assets/analytics-consent.js': {
+          target: 'https://games.khe.ee',
+          changeOrigin: true,
+        },
       },
     },
   }

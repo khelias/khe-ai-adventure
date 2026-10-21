@@ -51,10 +51,16 @@ product docs; infrastructure is in `khe-homelab`.
   the system prefers, with the `.ee` in the app's violet, and `<html>`
   carries `data-theme="dark"` so the package's dots follow. As a room
   committed to one theme it shows no theme toggle (estate ADR-017).
+- The analytics consent banner is khe-sites', loaded unstamped from the
+  games.khe.ee root (`/assets/analytics-consent.js` in `index.html`, kept
+  out of the bundle by `vite-ignore`), proxied to games.khe.ee by the dev
+  server and stubbed in `tests/ui-smoke.spec.ts`
+  ([estate ADR-019](https://github.com/khelias/khe-architecture/blob/main/decisions/019-consent-banner-from-the-origin-root.md)).
 
 ## Commands
 
-- `npm run dev` - frontend dev server; proxies `/adventure/api/` to live
+- `npm run dev` - frontend dev server; proxies `/adventure/api/` and the
+  consent banner to live
 - `npm run build` - `tsc -b && vite build`
 - `npm run lint` - ESLint with type-aware rules
 - `npm run test:unit` - node:test via tsx, which takes JSX settings from

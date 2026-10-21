@@ -182,6 +182,14 @@ async function playToNarrativeEnding(page: Page) {
   await expect(page.getByRole('heading', { name: 'Lugu jõudis lõpuni' })).toBeInViewport()
 }
 
+// The dev server proxies the consent banner to games.khe.ee (estate ADR-019); an empty one keeps
+// every test off the live site.
+test.beforeEach(async ({ context }) => {
+  await context.route('**/assets/analytics-consent.js', (route) =>
+    route.fulfill({ contentType: 'application/javascript', body: '' }),
+  )
+})
+
 test.describe('desktop setup smoke', () => {
   test.use({
     deviceScaleFactor: 1,
