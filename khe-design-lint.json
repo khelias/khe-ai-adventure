@@ -1,0 +1,5 @@
+{
+  "include": ["src/**"],
+  "content": ["src/game/prompts/**", "src/i18n/lang-packs.ts"],
+  "baseline": "khe-design-lint-baseline.json"
+}

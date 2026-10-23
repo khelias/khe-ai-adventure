@@ -9,7 +9,7 @@ interface AppSiteHeaderProps {
 }
 
 // The KHE site header: the mark to the khe.ee front page, the rooms menu with
-// Games current and the game's name after the slash (estate ADR-018).
+// Games current and the game's name after the slash (estate ADR-021).
 export function AppSiteHeader({ language, onLanguageChange }: AppSiteHeaderProps) {
   const strings = translations[language]
   return (

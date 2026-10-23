@@ -119,9 +119,9 @@
   --text-faint:     #7c799c;
 
   /* Accent: violet only */
-  --accent:         #a78bfa;
+  --accent:         #b59ad6;
   --accent-bright:  #c4b5fd;
-  --accent-deep:    #7c3aed;
+  --accent-deep:    #6a3d8f;
   --accent-glow:    rgba(167, 139, 250, 0.35);
   --accent-veil:    rgba(139, 92, 246, 0.08);
 
@@ -206,7 +206,7 @@ button {
 }
 
 /* The KHE site header (<SiteHeader> from @khelias/ui) on the KHE family's dark
-   values (khe-sites DESIGN.md, estate ADR-018), whatever the system prefers:
+   values (khe-sites DESIGN.md, estate ADR-021), whatever the system prefers:
    the game is dark by design, and <html data-theme="dark"> gives the rooms
    list's dots, the package's own, their dark values too. The .ee is the app's
    own violet. */

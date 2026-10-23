@@ -41,11 +41,21 @@ product docs; infrastructure is in `khe-homelab`.
   it and sets its `--khe-footer-*` values from the app's tokens. A header or
   footer release changes every `ui:smoke` baseline that shows it.
 - The look follows the KHE family layer
-  ([estate ADR-018](https://github.com/khelias/khe-architecture/blob/main/decisions/018-rooms-menu-in-the-shared-header.md)):
+  ([estate ADR-021](https://github.com/khelias/khe-architecture/blob/main/decisions/021-family-shell-and-design-check.md)):
   AI Seiklus is a game inside the Games room, its header is the family chrome
   with the rooms menu (Mängud current, the game's name after the slash, the
-  mark to the khe.ee front page), and
-  the game screens keep their own violet stage as application content.
+  mark to the khe.ee front page), and its accent is the family's `adventure`
+  (`--accent` the dark value, `--accent-deep` the light one). The rest of
+  the shell does not meet ADR-021 point 1 yet: the stage and its controls
+  carry gradients, a violet glow, capitals and wide tracking, a rebuild of
+  its own. `npm run lint` ends with `khe-design-lint` (ADR-021 point 8;
+  its rules are the Tells in khe-sites `DESIGN.md`), which holds their
+  count per file to `khe-design-lint-baseline.json`: after a fix run
+  `npx khe-design-lint --write-baseline`, and keep a match on purpose with
+  `design-lint-allow <rule>: <reason>` on its line.
+  `khe-design-lint.json` names the narrator's prompts and `lang-packs.ts`,
+  text sent to the model, as content, exempt from the emoji, palette and
+  dash rules.
   The game is dark by design, a content theme committed to one setting, so
   its header takes the family's dark values (khe-sites `DESIGN.md`) whatever
   the system prefers, with the `.ee` in the app's violet, and `<html>`
