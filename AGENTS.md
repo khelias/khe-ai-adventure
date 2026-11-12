@@ -95,7 +95,8 @@ product docs; infrastructure is in `khe-homelab`.
 
 `proxy:smoke` needs `API_SECRET`, and `npm run dev` against the live proxy
 needs the same value as `VITE_API_SECRET`. It lives in
-`services/apps/games/.env` on the VM; the operator fetches it with
+`services/apps/games/.env` on the VM; the operator fetches it, never the
+agent (estate ADR-023 keeps secrets with a person), with
 `ssh khe@docker-vm 'cd /home/khe/homelab/services/apps/games && set -a && . ./.env && printf %s "$API_SECRET"'`
 into the variable, never into a file or the conversation.
 
