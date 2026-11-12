@@ -12,9 +12,9 @@ RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
       /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
-# CVE-2026-85091: the pinned base still carries zlib 1.3.2-r0. Drop this once
-# a node:24-alpine digest ships 1.3.2-r1.
-RUN apk upgrade --no-cache zlib
+# CVE-2026-4738: the pinned base still carries an older zlib. Drop this once
+# a node:24-alpine digest ships zlib 1.4-r0.
+RUN apk add --no-cache --upgrade 'zlib>=1.4-r0'
 
 WORKDIR /app
 ENV NODE_ENV=production
