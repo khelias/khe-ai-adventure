@@ -14,7 +14,7 @@ RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
 
 # CVE-2026-4738: the pinned base still carries an older zlib. Drop this once
 # a node:24-alpine digest ships zlib 1.4-r0.
-RUN apk upgrade --no-cache zlib
+RUN apk add --no-cache --upgrade 'zlib>=1.4-r0'
 
 WORKDIR /app
 ENV NODE_ENV=production
