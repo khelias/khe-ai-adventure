@@ -1,5 +1,8 @@
 # khe-ai-adventure
 
+Workspace-wide rules (push, review, docs, estate ADRs) are in [khe-workspace
+`AGENTS.md`](https://github.com/khelias/khe-workspace/blob/main/AGENTS.md).
+
 Pass-the-phone party adventure for 3-6 adult players (18+): one shared
 device, the AI narrates, the group debates, the engine applies state. Live at
 games.khe.ee/adventure. This repo owns the app, proxy, prompts, contracts and
@@ -48,11 +51,8 @@ product docs; infrastructure is in `khe-homelab`.
   (`--accent` the dark value, `--accent-deep` the light one). The rest of
   the shell does not meet ADR-021 point 1 yet: the stage and its controls
   carry gradients, a violet glow, capitals and wide tracking, a rebuild of
-  its own. `npm run lint` ends with `khe-design-lint` (ADR-021 point 8;
-  its rules are the Tells in khe-sites `DESIGN.md`), which holds their
-  count per file to `khe-design-lint-baseline.json`: after a fix run
-  `npx khe-design-lint --write-baseline`, and keep a match on purpose with
-  `design-lint-allow <rule>: <reason>` on its line.
+  its own. `npm run lint` ends with `khe-design-lint` (estate ADR-021 point
+  8; usage in khe-ui `AGENTS.md`), against `khe-design-lint-baseline.json`.
   `khe-design-lint.json` names the narrator's prompts and `lang-packs.ts`,
   text sent to the model, as content, exempt from the emoji, palette and
   dash rules.
@@ -278,5 +278,4 @@ lock file maintenance (`renovate.json`, the image scanner excepted), and
 every merge to `main` publishes images that the pin App deploys. The way
 back from a bad one is to revert its commit on `main` and push, which
 publishes and pins the previous code; when that is too slow, the `sha-`
-rollback above. A new automated writer joins the estate's writer register
-in khe-meta in the same change.
+rollback above.
