@@ -10,10 +10,11 @@ RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e
 
-# CVE-2026-85091: the pinned base still carries zlib 1.3.2-r0. Drop this once
-# an nginx-unprivileged digest ships zlib 1.3.2-r1.
+# The newest nginx-unprivileged digest lags Alpine's security fixes (zlib,
+# curl, brotli, expat, libxslt, musl), and the scan gate fails on them. Drop
+# this once a digest that passes the scan on its own ships.
 USER root
-RUN apk upgrade --no-cache zlib
+RUN apk upgrade --no-cache
 USER 101
 
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
