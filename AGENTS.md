@@ -11,13 +11,13 @@ product docs; infrastructure is in `khe-homelab`.
 ## Stack
 
 - Frontend (`src/`): React 19, Vite 8, Tailwind v4 (`@tailwindcss/vite`),
-  Zustand 5, Playwright smoke tests, `tsx` for unit tests. Node 24.
+  Zustand 5, Playwright smoke tests, `tsx` for unit tests. Node 26 (`.nvmrc`).
 - TypeScript is two packages on purpose: `@typescript/native` (TS 7)
   supplies `tsc`, and `typescript` is aliased to `@typescript/typescript6`
   because typescript-eslint does not support TS 7 yet. A plain Renovate bump
   of `typescript` to 7 breaks lint.
 - Proxy (`proxy/`, own `package.json`): Express 5, Anthropic SDK and a Gemini
-  fetch adapter, shipped as a multi-stage `node:24-alpine` image whose runtime
+  fetch adapter, shipped as a multi-stage `node:26-alpine` image whose runtime
   stage has no npm. Default and allowed models are at the top of
   `proxy/server.js`; the reasoning is in `docs/model-strategy.md`.
 - Web image (`web/`, build context the repo root): the Vite build served by

@@ -1,10 +1,10 @@
-FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS deps
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS deps
 
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
 
 # The proxy never runs a package manager, and the scan gate would otherwise
 # fail on npm's bundled dependencies.
@@ -13,7 +13,7 @@ RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
       /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 # CVE-2026-4738: the pinned base still carries an older zlib. Drop this once
-# a node:24-alpine digest ships zlib 1.4-r0.
+# a node:26-alpine digest ships zlib 1.4-r0.
 RUN apk add --no-cache --upgrade 'zlib>=1.4-r0'
 
 WORKDIR /app
