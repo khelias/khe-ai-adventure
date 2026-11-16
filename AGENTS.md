@@ -44,14 +44,14 @@ product docs; infrastructure is in `khe-homelab`.
   it and sets its `--khe-footer-*` values from the app's tokens. A header or
   footer release changes every `ui:smoke` baseline that shows it.
 - The look follows the KHE family layer
-  ([estate ADR-021](https://github.com/khelias/khe-architecture/blob/main/decisions/021-family-shell-and-design-check.md)):
+  ([estate ADR-035](https://github.com/khelias/khe-architecture/blob/main/decisions/035-family-shell-and-design-check-with-its-exceptions.md)):
   AI Seiklus is a game inside the Games room, its header is the family chrome
   with the rooms menu (Mängud current, the game's name after the slash, the
   mark to the khe.ee front page), and its accent is the family's `adventure`
   (`--accent` the dark value, `--accent-deep` the light one). The rest of
-  the shell does not meet ADR-021 point 1 yet: the stage and its controls
+  the shell does not meet ADR-035 point 1 yet: the stage and its controls
   carry gradients, a violet glow, capitals and wide tracking, a rebuild of
-  its own. `npm run lint` ends with `khe-design-lint` (estate ADR-021 point
+  its own. `npm run lint` ends with `khe-design-lint` (estate ADR-035 point
   8; usage in khe-ui `AGENTS.md`), against `khe-design-lint-baseline.json`.
   `khe-design-lint.json` names the narrator's prompts and `lang-packs.ts`,
   text sent to the model, as content, exempt from the emoji, palette and
