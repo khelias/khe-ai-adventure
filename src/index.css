@@ -213,7 +213,7 @@ button {
 .site-header {
   --fam-paper: #0b0d0d; --fam-surface: #121615; --fam-ink: #eef1f0;
   --fam-muted: #8a928f; --fam-rule: #232827; --fam-rule-strong: #3a413f;
-  --fam-sunken: #0f1211;
+  --fam-sunken: #171c1b;
 
   --khe-header-title-font: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
   --khe-header-bg: var(--fam-paper);
