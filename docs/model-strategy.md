@@ -28,6 +28,10 @@ Why:
 - The existing proxy already uses Gemini for the Estonian editor pass, so keeping the main game on Gemini avoids mixing an expensive generator with a cheap editor.
 - When it was chosen (April 2026) the Gemini 3 options were still preview models. Newer Gemini models are now on the proxy's allowlist as candidates (see below); whether one replaces it is for the measurement pass to decide.
 
+Google has deprecated `gemini-2.5-flash`: from 2026-12-01 its requests are
+routed to `gemini-3.5-flash-lite`, at the same price, whether or not the
+measurement below has run.
+
 Implementation:
 
 - Client provider default: `gemini`
