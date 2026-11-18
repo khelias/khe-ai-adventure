@@ -167,6 +167,13 @@ test('starts offline with a notice, and the mock provider still plays', async ({
   await expect(page.locator('button.choice').first()).toBeVisible()
 })
 
+test('a consent script that never answers does not hold the app back', async ({ page }) => {
+  await openControlled(page)
+  await page.route('**/assets/analytics-consent.js', () => undefined)
+  await page.reload({ waitUntil: 'commit' })
+  await expect(page.getByRole('heading', { name: SETUP_HEADING })).toBeVisible()
+})
+
 test('the signing secret and the API stay out of the cache', async ({ page }) => {
   await openControlled(page)
   const cached = await page.evaluate(async () => {
