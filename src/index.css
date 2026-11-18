@@ -172,6 +172,8 @@ html {
   background: var(--bg);
   color-scheme: dark;
   -webkit-text-size-adjust: 100%;
+  /* Android's pull-to-refresh would reload a game in progress. */
+  overscroll-behavior-y: contain;
 }
 
 body {
@@ -261,6 +263,47 @@ button {
 
 .app-content--play {
   max-width: 42rem;
+}
+
+.offline-notice {
+  margin: 0;
+  padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.game-exit {
+  display: flex;
+  justify-content: flex-end;
+  margin: -0.5rem 0 0.25rem;
+}
+
+.turn-retry {
+  margin-top: 1rem;
+}
+
+.exit-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem 0.25rem;
+}
+
+.exit-sheet__title {
+  margin: 0;
+  color: var(--text);
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.375rem;
+  font-weight: 400;
+}
+
+.exit-sheet__text {
+  margin: 0 0 0.5rem;
+  color: var(--text-dim);
+  line-height: 1.5;
 }
 
 /* ════════════════════════════════════════════

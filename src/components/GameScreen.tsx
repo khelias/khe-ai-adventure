@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { translations } from '../i18n/translations'
-import { handlePlayerChoice } from '../game/actions'
+import { handlePlayerChoice, playFirstTurn } from '../game/actions'
 import { formatAbilityForDisplay } from '../game/abilityText'
 import type {
   Choice,
@@ -170,6 +170,10 @@ export function GameScreen() {
   const choices = useGameStore((s) => s.choices)
   const isLoading = useGameStore((s) => s.isLoading)
   const error = useGameStore((s) => s.error)
+  // A sequel starts with the previous game's scene and choices still in the store.
+  const firstTurnFailed = useGameStore(
+    (s) => Boolean(s.error) && !s.isLoading && s.transcript?.turns.length === 0,
+  )
   const strings = translations[language]
 
   const [showCustomInput, setShowCustomInput] = useState(false)
@@ -208,13 +212,13 @@ export function GameScreen() {
     })
   }
 
-  const onCustomSubmit = () => {
+  const onCustomSubmit = async () => {
     const text = customText.trim()
     if (!text) return
     setShowCustomInput(false)
     setShowAbilityPanel(false)
-    setCustomText('')
-    void handlePlayerChoice(text, { isFreeText: true })
+    if (await handlePlayerChoice(text, { isFreeText: true })) setCustomText('')
+    else setShowCustomInput(true)
   }
 
   const paragraphs = sceneText.split('\n').filter(Boolean)
@@ -260,7 +264,7 @@ export function GameScreen() {
       </div>
 
       {/* Choices / turn loading */}
-      {choices.length > 0 && !waitingForScene ? (
+      {choices.length > 0 && !waitingForScene && !firstTurnFailed ? (
         <div className="mt-8">
           {isLoading ? (
             <div className="turn-loading">
@@ -339,7 +343,7 @@ export function GameScreen() {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
-                          onCustomSubmit()
+                          void onCustomSubmit()
                         } else if (e.key === 'Escape') {
                           e.preventDefault()
                           setShowCustomInput(false)
@@ -348,7 +352,7 @@ export function GameScreen() {
                       }}
                     />
                     <div className="custom-choice-actions">
-                      <button onClick={onCustomSubmit} disabled={!customText.trim()} className="btn-primary custom-choice-submit">
+                      <button onClick={() => void onCustomSubmit()} disabled={!customText.trim()} className="btn-primary custom-choice-submit">
                         {strings.customChoiceSubmit}
                       </button>
                       <button
@@ -411,6 +415,12 @@ export function GameScreen() {
         <p style={{ color: 'var(--state-failing)', fontSize: '0.85rem', marginTop: '1rem' }} className="type-caps">
           {error}
         </p>
+      ) : null}
+
+      {firstTurnFailed ? (
+        <button type="button" className="btn-primary turn-retry" onClick={() => void playFirstTurn()}>
+          {strings.retryTurnBtn}
+        </button>
       ) : null}
     </section>
   )

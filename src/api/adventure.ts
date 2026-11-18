@@ -1,7 +1,7 @@
 import type { Language, Provider } from '../game/types'
 import { callMockAI } from './mockAdventure'
-import { errorFromResponse, fetchProxy, isRecord } from './proxyErrors'
-import { resolveApiSecret } from './runtimeConfig'
+import { errorFromResponse, fetchProxy, isRecord, ProxyUnavailableError } from './proxyErrors'
+import { loadConfigScript, resolveApiSecret, secretLoader } from './runtimeConfig'
 
 const API_URL = '/adventure/api/generate'
 
@@ -10,9 +10,15 @@ const API_URL = '/adventure/api/generate'
 // src/game/prompts/schemas.ts.
 export type JsonSchema = Record<string, unknown>
 
-const secret = resolveApiSecret(window.__ADVENTURE_CONFIG__, import.meta.env.VITE_API_SECRET)
+const apiSecret = secretLoader(
+  () => resolveApiSecret(window.__ADVENTURE_CONFIG__, import.meta.env.VITE_API_SECRET),
+  () => loadConfigScript(`${import.meta.env.BASE_URL}config.js`),
+)
 
 async function generateSignature(payloadStr: string): Promise<string> {
+  const secret = await apiSecret().catch((err: unknown) => {
+    throw new ProxyUnavailableError({ cause: err })
+  })
   if (!secret) return ''
   const encoder = new TextEncoder()
   const key = await crypto.subtle.importKey(

@@ -36,6 +36,15 @@ function t() {
   return translations[useGameStore.getState().settings.language]
 }
 
+// Bumped when the players leave a game, so an answer still on its way cannot write into the
+// setup screen or the next game.
+let gameRun = 0
+
+export function exitGame(): void {
+  gameRun += 1
+  useGameStore.getState().reset()
+}
+
 function errorText(err: unknown, describe: (msg: string) => string): string {
   if (err instanceof ProxyUnavailableError) return t().aiUnavailable
   return describe(err instanceof Error ? err.message : String(err))
@@ -266,14 +275,21 @@ export async function kickFirstTurn(): Promise<void> {
   const store = useGameStore.getState()
   store.setError(null)
   store.startGame()
-  const firstChoice = LANG_PACKS[store.settings.language].gameStartChoice
-  await handlePlayerChoice(firstChoice, { isFirstTurn: true })
+  await playFirstTurn()
 }
 
+// Also the retry after a first turn that failed.
+export async function playFirstTurn(): Promise<void> {
+  const { settings } = useGameStore.getState()
+  await handlePlayerChoice(LANG_PACKS[settings.language].gameStartChoice, { isFirstTurn: true })
+}
+
+// Resolves to false when the turn failed, so the caller can give back what the players typed.
 export async function handlePlayerChoice(
   choiceText: string,
   opts: { isFirstTurn?: boolean; isFreeText?: boolean; chosenChoice?: Choice } = {},
-): Promise<void> {
+): Promise<boolean> {
+  const run = gameRun
   const store = useGameStore.getState()
   store.setError(null)
   store.setLoading(true)
@@ -344,6 +360,7 @@ export async function handlePlayerChoice(
       forceEnd: isFinalTurn ? 'narrative-final' : undefined,
     })
     const response = await callAI<TurnResponse>(user, turnSchema, store.settings.provider, system, store.settings.language)
+    if (run !== gameRun) return false
 
     // Authoritative deltas: chosenChoice.expectedChanges when an offered
     // choice declared costs, otherwise the AI's response.parameters for
@@ -408,7 +425,7 @@ export async function handlePlayerChoice(
       // Secrets win/loss is computed from the final gameOverKind + parameters.
       // setGameOver just flipped gameOverKind, so scoring reads committed state.
       useGameStore.getState().scoreSecrets()
-      return
+      return true
     }
 
     // Unrecoverable = 2+ parameters at worst. Trigger AI-narrated ending.
@@ -435,7 +452,7 @@ export async function handlePlayerChoice(
         nextTurn: upcomingTurn,
         lastScene: response.scene,
       })
-      return
+      return true
     }
 
     store.appendTurnRecord(
@@ -457,10 +474,12 @@ export async function handlePlayerChoice(
       currentTurn: upcomingTurn,
       parameterEvents,
     })
+    return true
   } catch (err) {
-    store.setError(errorText(err, t().errorApi))
+    if (run === gameRun) store.setError(errorText(err, t().errorApi))
+    return false
   } finally {
-    store.setLoading(false)
+    if (run === gameRun) store.setLoading(false)
   }
 }
 
@@ -473,6 +492,7 @@ async function narrateUnrecoverableEnd(args: {
   nextTurn: number
   lastScene: string
 }): Promise<void> {
+  const run = gameRun
   const store = useGameStore.getState()
   const strings = translations[store.settings.language]
   const { parameters, roles, choiceText, nextTurn, lastScene } = args
@@ -518,6 +538,7 @@ async function narrateUnrecoverableEnd(args: {
       system,
       store.settings.language,
     )
+    if (run !== gameRun) return
     // The forceEnd scene is usually short (the weight is in gameOverText),
     // but when present it's the final on-stage moment — keep it in transcript.
     if (endResponse.scene && endResponse.scene.trim()) {
@@ -548,6 +569,7 @@ async function narrateUnrecoverableEnd(args: {
       endResponse.gameOverText || strings.endParametricText(fallbackParamName, fallbackWorstState),
     )
   } catch {
+    if (run !== gameRun) return
     // Fallback: hardcoded text (used to be the only path)
     store.setGameOver(
       'parametric',

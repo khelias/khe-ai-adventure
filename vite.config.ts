@@ -1,6 +1,17 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { viewInitScript } from '@khelias/ui/view'
+import { serviceWorkerPlugin } from './build/sw.ts'
+
+const PRODUCT_ROOT = '/adventure/'
+
+// The header's view is decided before first paint (estate ADR-030 point 3).
+const productViewPlugin = (): Plugin => ({
+  name: 'adventure-product-view',
+  transformIndexHtml: (html) =>
+    html.replace('<!-- site-view -->', `<script>${viewInitScript(PRODUCT_ROOT)}</script>`),
+})
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => {
@@ -9,8 +20,8 @@ export default defineConfig(({ command }) => {
   const apiRewrite = process.env.VITE_API_REWRITE === 'true'
 
   return {
-    base: command === 'build' ? '/adventure/' : '/',
-    plugins: [react(), tailwindcss()],
+    base: command === 'build' ? PRODUCT_ROOT : '/',
+    plugins: [react(), tailwindcss(), productViewPlugin(), serviceWorkerPlugin()],
     build: {
       license: { fileName: 'third-party-licenses.md' },
     },

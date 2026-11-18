@@ -21,6 +21,10 @@ describe('AppSiteHeader', () => {
     assert.doesNotMatch(html, /KHE Games/)
   })
 
+  it('marks the page as a product on the game\'s own path', () => {
+    assert.match(render('et'), /<header[^>]*data-khe-product="\/adventure\/"/)
+  })
+
   it('leads the mark to the khe.ee front page in the chosen language', () => {
     assert.match(render('en'), /<a class="site-header__brand[^"]*" href="https:\/\/khe\.ee\/\?lang=en" aria-label="KHE\.ee home"/)
   })

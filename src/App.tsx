@@ -1,8 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useGameStore } from './store/gameStore'
 import { SiteFooter } from '@khelias/ui/react'
 import { translations } from './i18n/translations'
 import { hrefWithLanguage, persistLanguagePreference } from './i18n/language'
+import { roomHref } from '@khelias/ui/rooms'
+import { exitGame } from './game/actions'
+import { useBackGuard } from './useBackGuard'
+import { useOnline } from './useOnline'
 import { AppSiteHeader } from './components/AppSiteHeader'
 import { SetupScreen } from './components/SetupScreen'
 import { StoryChoiceScreen } from './components/StoryChoiceScreen'
@@ -10,12 +14,19 @@ import { RoleAssignmentScreen } from './components/RoleAssignmentScreen'
 import { SecretAssignmentScreen } from './components/SecretAssignmentScreen'
 import { GameScreen } from './components/GameScreen'
 import { GameOverScreen } from './components/GameOverScreen'
+import { ExitGameSheet } from './components/ExitGameSheet'
 
 export default function App() {
   const screen = useGameStore((s) => s.screen)
   const language = useGameStore((s) => s.settings.language)
+  const provider = useGameStore((s) => s.settings.provider)
   const setSetting = useGameStore((s) => s.setSetting)
   const strings = translations[language]
+  const online = useOnline()
+  const [exitOpen, setExitOpen] = useState(false)
+  const gameRunning = screen === 'secretAssignment' || screen === 'game'
+  if (exitOpen && !gameRunning) setExitOpen(false)
+  useBackGuard(gameRunning, () => setExitOpen(true))
   const contentClassName =
     screen === 'game' || screen === 'gameOver'
       ? 'app-content app-content--play'
@@ -27,6 +38,14 @@ export default function App() {
     document.title = strings.appTitle
   }, [language, strings.appTitle])
 
+  // Going back lands on a history entry from before a language change, and the URL outranks
+  // the stored language on the next load.
+  useEffect(() => {
+    const keepUrlLanguage = () => persistLanguagePreference(language)
+    window.addEventListener('popstate', keepUrlLanguage)
+    return () => window.removeEventListener('popstate', keepUrlLanguage)
+  }, [language])
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [screen])
@@ -35,11 +54,22 @@ export default function App() {
     <div className="app-shell">
       <AppSiteHeader language={language} onLanguageChange={(next) => setSetting('language', next)} />
 
+      {!online && provider !== 'mock' ? (
+        <p className="offline-notice" role="status">{strings.offlineNotice}</p>
+      ) : null}
+
       <main className={screen === 'setup' ? 'app-main app-main--setup' : 'app-main'}>
         {screen === 'setup' ? (
           <SetupScreen />
         ) : (
           <div className={contentClassName}>
+            {gameRunning ? (
+              <div className="game-exit">
+                <button type="button" className="btn-ghost" onClick={() => setExitOpen(true)}>
+                  {strings.exitGameBtn}
+                </button>
+              </div>
+            ) : null}
             {screen === 'storyChoice' && <StoryChoiceScreen />}
             {screen === 'roleAssignment' && <RoleAssignmentScreen />}
             {screen === 'secretAssignment' && <SecretAssignmentScreen />}
@@ -49,8 +79,19 @@ export default function App() {
         )}
       </main>
 
+      <ExitGameSheet
+        open={exitOpen}
+        strings={strings}
+        onClose={() => setExitOpen(false)}
+        onConfirm={() => {
+          setExitOpen(false)
+          exitGame()
+        }}
+      />
+
       <SiteFooter
         label={strings.footerLinksLabel}
+        home={{ label: 'KHE.ee', href: roomHref('home', language) }}
         links={[
           { label: 'GitHub', href: 'https://github.com/khelias/khe-ai-adventure', icon: 'github' },
           { label: 'LinkedIn', href: 'https://www.linkedin.com/in/kaido-henrik-elias/', icon: 'linkedin' },

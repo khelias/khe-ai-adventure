@@ -23,8 +23,17 @@ product docs; infrastructure is in `khe-homelab`.
 - Web image (`web/`, build context the repo root): the Vite build served by
   `nginx-unprivileged` on 8080 under `/adventure/`. At start,
   `web/40-adventure-config.sh` writes `API_SECRET` into `config.js`, which
-  `index.html` loads before the bundle; `public/config.js` is the empty
-  placeholder for dev and `ui:smoke`.
+  `src/api/adventure.ts` loads when the first request needs a signature;
+  `public/config.js` is the empty placeholder for dev and `ui:smoke`.
+- Installed app
+  ([estate ADR-041](https://github.com/khelias/khe-architecture/blob/main/decisions/041-installed-apps-stay-on-their-paths-with-a-worker-each.md)):
+  `public/manifest.webmanifest`, the icons rendered from `public/icon.svg`
+  with `rsvg-convert` (the maskable one at 80% scale on the same violet), and
+  the worker `src/sw.ts`, which `build/sw.ts` compiles into `sw.js` with the
+  shell's file list. Its cache prefix is `adventure-shell-`; `config.js` and
+  `/adventure/api/` stay outside it, and a new worker waits for every window
+  to close, so a running game is never reloaded. Offline the app opens with a
+  notice (`offlineNotice`); only the Mock provider plays without a network.
 - Fonts: Fraunces and Inter, latin and latin-ext subsets, self-hosted from
   `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
   `public/fonts/OFL.txt`). No request goes to Google. `vite build` writes the
@@ -47,7 +56,10 @@ product docs; infrastructure is in `khe-homelab`.
   ([estate ADR-035](https://github.com/khelias/khe-architecture/blob/main/decisions/035-family-shell-and-design-check-with-its-exceptions.md)):
   AI Seiklus is a game inside the Games room, its header is the family chrome
   with the rooms menu (Mängud current, the game's name after the slash, the
-  mark to the khe.ee front page), and its accent is the family's `adventure`
+  mark to the khe.ee front page), opened directly or installed it shows the
+  product view, the game's name and the language only, with a KHE.ee link in
+  the footer ([estate ADR-030](https://github.com/khelias/khe-architecture/blob/main/decisions/030-the-portfolio-frame-and-the-product-view.md)),
+  and its accent is the family's `adventure`
   (`--accent` the dark value, `--accent-deep` the light one). The rest of
   the shell does not meet ADR-035 point 1 yet: the stage and its controls
   carry gradients, a violet glow, capitals and wide tracking, a rebuild of
@@ -77,7 +89,10 @@ product docs; infrastructure is in `khe-homelab`.
   `tsconfig.app.json` so a test can render a component
 - `npm run ui:smoke` - headless Playwright against the Mock provider;
   `PLAYWRIGHT_BASE_URL` reuses a running server instead of starting one,
-  `PLAYWRIGHT_BROWSER_CHANNEL` picks a local browser over bundled Chromium
+  `PLAYWRIGHT_BROWSER_CHANNEL` picks a local browser over bundled Chromium.
+  It then runs `playwright.offline.config.ts`: `tests/offline/` builds
+  production and covers the offline start, signing after it, a worker update
+  and the kill-switch, always on bundled Chromium
 - `npm run playtest -- --genre=Thriller --duration=Short --language=et` -
   prompt-quality run, transcripts into `playtest-transcripts/`, rubric in
   `docs/prompt-audit.md`
@@ -123,7 +138,9 @@ screen changed.
 ## Layout
 
 ```
+build/         sw.ts: compiles the service worker into the build
 src/
+  sw.ts        the service worker
   api/         live + mock providers, runtime config
   components/  the screens (Setup, Role, Secret, Game, GameOver, ...)
   game/        engine, actions, secrets, transcript, types, abilityText
@@ -137,12 +154,14 @@ proxy/
   gemini-response.js  Gemini response parsing: safety blocks, truncation
   et-style-guide.js  system prompt for the Estonian editor pass
   *.d.ts           types for the unit tests; not shipped in the image
-web/           Dockerfile, nginx.conf, config.js entrypoint of the web image
+web/           Dockerfile, nginx.conf, config.js entrypoint of the web image,
+               sw-kill-switch.js
 docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
                ui-ux, game-systems-audit; ADRs in decisions/
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts,
                pin-homelab.sh (CI's homelab pin PR), README.md
-tests/         ui-smoke.spec.ts, unit/{game,eval,runtime-config,proxy-limits,
+tests/         ui-smoke.spec.ts, offline/ (the installed app, on a production
+               build), unit/{game,eval,runtime-config,proxy-limits,
                proxy-generation,gemini-response,sheet-motion,
                site-header}.test.ts
 ```
@@ -167,7 +186,9 @@ sticky hover; a tappable's touch feedback is its `:active` rule.
 5. **HMAC secret:** the frontend's key must equal `API_SECRET` (proxy). It
    comes from `window.__ADVENTURE_CONFIG__.apiSecret` (the web image's
    runtime `config.js`), falling back to the build-time `VITE_API_SECRET`
-   (`src/api/runtimeConfig.ts`), which only `npm run dev` uses. The web
+   (`src/api/runtimeConfig.ts`), which only `npm run dev` uses. The key is
+   fetched when the first request is signed, because an offline start has no
+   `config.js` and the worker never stores it. The web
    container gets `API_SECRET` from `services/apps/games/.env` on the VM, the
    same value the proxy reads.
 6. **Rate and token budgets are security controls.** `PROXY_MAX_*` bounds
@@ -269,6 +290,25 @@ Rollback is a khe-homelab change: pin both images to the same
 `sha-<full commit>@sha256:<digest>` of a known good commit, never one image
 alone (invariant 2). The pin job then leaves the pins alone until they are
 back on `:main@`. The procedure is in khe-homelab's `AGENTS.md`.
+
+## Kill-switch
+
+`sw.js` stays at its URL for good ([estate
+ADR-041](https://github.com/khelias/khe-architecture/blob/main/decisions/041-installed-apps-stay-on-their-paths-with-a-worker-each.md)
+point 4): a deleted file falls through to `index.html` and leaves the old
+worker running. If a deployed worker misbehaves, add this line to the final
+stage of `web/Dockerfile`, after the `COPY` of `dist`, and merge it:
+
+```dockerfile
+COPY web/sw-kill-switch.js /usr/share/nginx/html/adventure/sw.js
+```
+
+Every visitor's worker updates to it on the next visit, removes the
+`adventure-shell-` caches and unregisters itself. Open windows are not
+reloaded, so a running game continues from the network. Then fix the cause,
+remove the line and ship a normal build.
+
+## Automated writers
 
 Automated writers
 ([estate ADR-007](https://github.com/khelias/khe-architecture/blob/main/decisions/007-automated-writers.md)): Renovate

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { resolveApiSecret } from '../../src/api/runtimeConfig'
+import { resolveApiSecret, secretLoader } from '../../src/api/runtimeConfig'
 
 describe('resolveApiSecret', () => {
   it('prefers the runtime config written by the web image', () => {
@@ -17,5 +17,39 @@ describe('resolveApiSecret', () => {
 
   it('returns an empty string when neither is set', () => {
     assert.equal(resolveApiSecret(undefined, undefined), '')
+  })
+})
+
+describe('secretLoader', () => {
+  it('does not load when the secret is already known', async () => {
+    let loads = 0
+    const secret = secretLoader(() => 'known', () => {
+      loads += 1
+      return Promise.resolve()
+    })
+    assert.equal(await secret(), 'known')
+    assert.equal(loads, 0)
+  })
+
+  it('reads the secret the load provided', async () => {
+    let value = ''
+    const secret = secretLoader(() => value, async () => {
+      await Promise.resolve()
+      value = 'loaded'
+    })
+    assert.equal(await secret(), 'loaded')
+  })
+
+  it('tries again after a failed load, as when the app started offline', async () => {
+    let value = ''
+    let online = false
+    const secret = secretLoader(() => value, () => {
+      if (!online) return Promise.reject(new Error('offline'))
+      value = 'loaded'
+      return Promise.resolve()
+    })
+    await assert.rejects(secret(), /offline/)
+    online = true
+    assert.equal(await secret(), 'loaded')
   })
 })

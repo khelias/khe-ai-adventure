@@ -1,0 +1,19 @@
+{
+  "id": "/adventure/",
+  "name": "AI Seiklus",
+  "short_name": "AI Seiklus",
+  "description": "Seiklusmäng 3-6 täiskasvanule ühes telefonis: lugu kirjutab tehisintellekt.",
+  "lang": "et",
+  "dir": "ltr",
+  "start_url": "/adventure/",
+  "scope": "/adventure/",
+  "display": "standalone",
+  "background_color": "#0a0913",
+  "theme_color": "#0a0913",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/adventure/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/adventure/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/adventure/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

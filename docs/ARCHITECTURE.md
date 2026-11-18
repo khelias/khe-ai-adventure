@@ -77,6 +77,14 @@ flowchart LR
     Editor --> Gemini
 ```
 
+## Installed App
+
+A service worker (`src/sw.ts`, estate ADR-041) sits between the browser and
+`adventure-web`. It keeps the app shell for an offline start, and answers a
+navigation with the saved build when the network fails or takes over 3 seconds.
+`config.js` and `/adventure/api/` always go to the network, so the signing
+secret is fetched when the first request is signed.
+
 ## Main Request Flow
 
 ```mermaid

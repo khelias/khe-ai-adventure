@@ -99,7 +99,7 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5182 npm run ui:smoke
 Refresh baselines deliberately after intended UI changes:
 
 ```bash
-PLAYWRIGHT_BASE_URL=http://127.0.0.1:5182 npm run ui:smoke -- --update-snapshots
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5182 npx playwright test tests/ui-smoke.spec.ts --update-snapshots=all
 ```
 
 ## Cost

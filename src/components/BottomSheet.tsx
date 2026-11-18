@@ -16,6 +16,7 @@ import {
   springStep,
   type DragSample,
 } from './sheetMotion'
+import { useSheetBack } from '../useBackGuard'
 
 type Phase = 'closed' | 'open' | 'closing'
 type Motion = 'none' | 'settle' | 'exit'
@@ -57,6 +58,7 @@ export function BottomSheet({
     if (open) setPhase('open')
     else if (phase === 'open') setPhase('closing')
   }
+  useSheetBack(phase === 'open', onClose)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)

@@ -146,6 +146,12 @@ interface StringTable {
   errorSequel: (msg: string) => string
   errorCustom: (msg: string) => string
   aiUnavailable: string
+  offlineNotice: string
+  retryTurnBtn: string
+  exitGameBtn: string
+  exitGameTitle: string
+  exitGameText: string
+  exitGameKeepPlaying: string
   // Secrets
   secretsKicker: string
   secretsAssignIntro: string
@@ -335,6 +341,12 @@ export const translations: Record<Language, StringTable> = {
     errorSequel: (msg) => `Järjeloo genereerimisel tekkis viga: ${msg}`,
     errorCustom: (msg) => `Uue loo genereerimisel tekkis viga: ${msg}`,
     aiUnavailable: 'AI pole praegu saadaval. Proovi hiljem uuesti.',
+    offlineNotice: 'Internetiühendus puudub. Lugu kirjutab tehisintellekt, seega saab mängida alles siis, kui ühendus on tagasi.',
+    retryTurnBtn: 'Proovi uuesti',
+    exitGameBtn: 'Lõpeta mäng',
+    exitGameTitle: 'Kas lõpetate mängu?',
+    exitGameText: 'Praegune seis läheb kaotsi ja seda ei saa hiljem jätkata.',
+    exitGameKeepPlaying: 'Mängi edasi',
     secretsKicker: 'saladused',
     secretsAssignIntro: 'Igaüks saab ühe salajase eesmärgi. Teised ei tohi näha.',
     secretsAssignWarning: 'Teised, pöörake selg. Ära piilu üle õla.',
@@ -544,6 +556,12 @@ export const translations: Record<Language, StringTable> = {
     errorCustom: (msg) =>
       `An error occurred while generating the new story: ${msg}`,
     aiUnavailable: 'The AI is unavailable right now. Try again later.',
+    offlineNotice: 'You are offline. The AI writes the story, so you can play once the connection is back.',
+    retryTurnBtn: 'Try again',
+    exitGameBtn: 'Exit game',
+    exitGameTitle: 'Exit this game?',
+    exitGameText: 'The current game will be lost and cannot be continued later.',
+    exitGameKeepPlaying: 'Keep playing',
     secretsKicker: 'secrets',
     secretsAssignIntro: 'Each player gets one secret goal. No one else may see it.',
     secretsAssignWarning: 'Others, turn your backs. No peeking over the shoulder.',
