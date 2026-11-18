@@ -26,22 +26,10 @@ with clear boundaries. The interesting parts are not "call an LLM":
 - Prompts, model choice and the API contract are documented as engineering
   decisions.
 
-```mermaid
-flowchart LR
-    Browser["React SPA"]
-    Nginx["nginx<br/>static app + API proxy"]
-    Proxy["adventure-proxy<br/>schema guard + provider adapters"]
-    Gemini["Google Gemini<br/>default generation + ET editor"]
-    Claude["Anthropic Claude<br/>opt-in quality mode"]
-
-    Browser --> Nginx
-    Nginx --> Proxy
-    Proxy --> Gemini
-    Proxy --> Claude
-```
-
-The browser never calls a provider. The Node proxy holds the keys, checks
-request signatures, enforces the schema allowlist and logs model telemetry.
+The browser never calls a provider. It talks to nginx, which serves the app
+and passes API calls to a small Node proxy. The proxy holds the keys, checks
+request signatures, enforces the schema allowlist and logs model telemetry,
+and it calls Google Gemini by default or Anthropic Claude in the quality mode.
 
 ## Running it
 
