@@ -192,6 +192,12 @@ test('installed with no language chosen, the game opens in Estonian; a browser t
   await installedOnAndroid.goto('/adventure/')
   await expect(installedOnAndroid.locator('html')).toHaveAttribute('lang', 'et')
 
+  // A link's ?lang shows that page in English but is no choice.
+  await tab.goto('/adventure/?lang=en')
+  await expect(tab.locator('html')).toHaveAttribute('lang', 'en')
+  await installedOnAndroid.reload()
+  await expect(installedOnAndroid.locator('html')).toHaveAttribute('lang', 'et')
+
   await installed.getByRole('button', { name: 'EN' }).click()
   await installed.goto('/adventure/')
   await expect(installed.locator('html')).toHaveAttribute('lang', 'en')

@@ -37,13 +37,10 @@ function syncUrlLanguage(language: Language): void {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
-export function persistLanguagePreference(
-  language: Language,
-  options: { syncUrl?: boolean } = {},
-): void {
+export function persistLanguagePreference(language: Language): void {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
-    if (options.syncUrl ?? true) syncUrlLanguage(language)
+    syncUrlLanguage(language)
   }
   syncDocumentLanguage(language)
 }
@@ -55,15 +52,12 @@ function isInstalledApp(): boolean {
   return standalone || window.matchMedia('(display-mode: standalone)').matches
 }
 
-// Only a choice is stored: app_locale is shared across games.khe.ee, and a stored default would
-// pass for a choice in the other apps and in an installed app that shares the browser's storage.
+// Only a press on the switcher is stored: app_locale is shared across games.khe.ee, where an
+// installed app on Android shares the browser's storage, and every room link and the launcher's
+// links carry a ?lang, chosen or not.
 export function loadInitialLanguage(): Language {
-  const fromUrl = readUrlLanguage()
-  if (fromUrl) {
-    persistLanguagePreference(fromUrl, { syncUrl: false })
-    return fromUrl
-  }
-  const language = readStoredLanguage() ?? (isInstalledApp() ? 'et' : DEFAULT_LANGUAGE)
+  const language =
+    readUrlLanguage() ?? readStoredLanguage() ?? (isInstalledApp() ? 'et' : DEFAULT_LANGUAGE)
   syncDocumentLanguage(language)
   return language
 }
