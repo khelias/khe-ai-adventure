@@ -34,6 +34,8 @@ product docs; infrastructure is in `khe-homelab`.
   `/adventure/api/` stay outside it, and a new worker waits for every window
   to close, so a running game is never reloaded. Offline the app opens with a
   notice (`offlineNotice`); only the Mock provider plays without a network.
+  Installed, it opens in Estonian until a language is chosen; a browser tab
+  keeps English.
 - Fonts: Fraunces and Inter, latin and latin-ext subsets, self-hosted from
   `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
   `public/fonts/OFL.txt`). No request goes to Google. `vite build` writes the

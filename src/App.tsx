@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useGameStore } from './store/gameStore'
 import { SiteFooter } from '@khelias/ui/react'
 import { translations } from './i18n/translations'
-import { hrefWithLanguage, persistLanguagePreference } from './i18n/language'
+import { hrefWithLanguage, keepUrlLanguage } from './i18n/language'
 import { roomHref } from '@khelias/ui/rooms'
 import { exitGame } from './game/actions'
 import { useBackGuard } from './useBackGuard'
@@ -34,16 +34,13 @@ export default function App() {
   const privacyHref = hrefWithLanguage('/privacy', language)
 
   useEffect(() => {
-    persistLanguagePreference(language, { syncUrl: false })
     document.title = strings.appTitle
-  }, [language, strings.appTitle])
+  }, [strings.appTitle])
 
-  // Going back lands on a history entry from before a language change, and the URL outranks
-  // the stored language on the next load.
   useEffect(() => {
-    const keepUrlLanguage = () => persistLanguagePreference(language)
-    window.addEventListener('popstate', keepUrlLanguage)
-    return () => window.removeEventListener('popstate', keepUrlLanguage)
+    const onPopState = () => keepUrlLanguage(language)
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [language])
 
   useEffect(() => {

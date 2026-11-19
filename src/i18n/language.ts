@@ -48,10 +48,31 @@ export function persistLanguagePreference(
   syncDocumentLanguage(language)
 }
 
+// The home-screen name is Estonian, and iOS starts an installed app with storage of its own.
+function isInstalledApp(): boolean {
+  if (typeof window === 'undefined') return false
+  const standalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
+  return standalone || window.matchMedia('(display-mode: standalone)').matches
+}
+
+// Only a choice is stored: app_locale is shared across games.khe.ee, and a stored default would
+// pass for a choice in the other apps and in an installed app that shares the browser's storage.
 export function loadInitialLanguage(): Language {
-  const language = readUrlLanguage() ?? readStoredLanguage() ?? DEFAULT_LANGUAGE
-  persistLanguagePreference(language, { syncUrl: false })
+  const fromUrl = readUrlLanguage()
+  if (fromUrl) {
+    persistLanguagePreference(fromUrl, { syncUrl: false })
+    return fromUrl
+  }
+  const language = readStoredLanguage() ?? (isInstalledApp() ? 'et' : DEFAULT_LANGUAGE)
+  syncDocumentLanguage(language)
   return language
+}
+
+// Going back can land on a history entry from before a language change, and its ?lang would
+// outrank the stored choice on the next load.
+export function keepUrlLanguage(language: Language): void {
+  const fromUrl = readUrlLanguage()
+  if (fromUrl && fromUrl !== language) syncUrlLanguage(language)
 }
 
 export function hrefWithLanguage(href: string, language: Language): string {
