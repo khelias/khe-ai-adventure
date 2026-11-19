@@ -12,9 +12,10 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c68
 
 # The newest nginx-unprivileged digest lags Alpine's security fixes (zlib,
 # curl, brotli, expat, libxslt, musl), and the scan gate fails on them. Drop
-# this once a digest that passes the scan on its own ships.
+# this once a digest that passes the scan on its own ships. The buildx cache
+# keeps an unchanged upgrade layer, so the newest fix is required by version.
 USER root
-RUN apk upgrade --no-cache
+RUN apk upgrade --no-cache && apk add --no-cache 'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
 USER 101
 
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
