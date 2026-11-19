@@ -197,6 +197,16 @@ test('installed with no language chosen, the game opens in Estonian; a browser t
   await expect(installed.locator('html')).toHaveAttribute('lang', 'en')
 })
 
+test('going back over a language change keeps the chosen language in the address', async ({ page }) => {
+  await page.goto('/adventure/?lang=et')
+  await page.evaluate(() => window.history.pushState(null, '', window.location.href))
+  await page.getByRole('button', { name: 'EN' }).click()
+  await page.goBack()
+  await expect(page).toHaveURL(/lang=en/)
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+})
+
 test('a consent script that never answers does not hold the app back', async ({ page }) => {
   await openControlled(page)
   await page.route('**/assets/analytics-consent.js', () => undefined)
