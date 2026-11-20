@@ -36,7 +36,10 @@ product docs; infrastructure is in `khe-homelab`.
   notice (`offlineNotice`); only the Mock provider plays without a network.
   Installed, it opens in Estonian until a language is chosen; a browser tab
   keeps English.
-- Fonts: Fraunces and Inter, latin and latin-ext subsets, self-hosted from
+- Fonts: Familjen Grotesk for the shell, the family's type
+  ([estate ADR-049](https://github.com/khelias/khe-architecture/blob/main/decisions/049-the-familys-type-is-familjen-grotesk.md),
+  `--sans` in `src/index.css`), and Fraunces on the stage only (the game
+  screens: the story text and the narrator), latin and latin-ext subsets, self-hosted from
   `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
   `public/fonts/OFL.txt`). No request goes to Google. `vite build` writes the
   bundled dependencies' licenses to `dist/third-party-licenses.md`.
