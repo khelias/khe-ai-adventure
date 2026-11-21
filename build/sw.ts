@@ -7,8 +7,8 @@ import { build as viteBuild, type Plugin } from 'vite'
 const SOURCE = fileURLToPath(new URL('../src/sw.ts', import.meta.url))
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url))
 
-// config.js carries the signing secret at runtime (estate ADR-041 point 6). The other two
-// are licence texts no screen loads.
+// config.js carries the signing secret at runtime (khe-architecture ESTATE.md, "Installable
+// web app"). The other two are licence texts no screen loads.
 const NOT_PRECACHED = new Set(['config.js', 'fonts/OFL.txt', 'third-party-licenses.md'])
 
 // Dotfiles (a stray .DS_Store) are refused by nginx and would fail the install.

@@ -6,7 +6,7 @@ import { serviceWorkerPlugin } from './build/sw.ts'
 
 const PRODUCT_ROOT = '/adventure/'
 
-// The header's view is decided before first paint (estate ADR-030 point 3).
+// The header's view is decided before first paint (estate ADR-035 point 11).
 const productViewPlugin = (): Plugin => ({
   name: 'adventure-product-view',
   transformIndexHtml: (html) =>

@@ -210,7 +210,7 @@ button {
 }
 
 /* The KHE site header (<SiteHeader> from @khelias/ui) on the KHE family's dark
-   values (khe-sites DESIGN.md, estate ADR-021), whatever the system prefers:
+   values (khe-sites DESIGN.md, estate ADR-035), whatever the system prefers:
    the game is dark by design, and <html data-theme="dark"> gives the rooms
    list's dots, the package's own, their dark values too. The .ee is the app's
    own violet. */

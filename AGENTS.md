@@ -37,7 +37,7 @@ product docs; infrastructure is in `khe-homelab`.
   Installed, it opens in Estonian until a language is chosen; a browser tab
   keeps English.
 - Fonts: Familjen Grotesk for the shell, the family's type
-  ([estate ADR-049](https://github.com/khelias/khe-architecture/blob/main/decisions/049-the-familys-type-is-familjen-grotesk.md),
+  ([khe-sites `DESIGN.md` "Typography"](https://github.com/khelias/khe-sites/blob/main/DESIGN.md#typography),
   `--sans` in `src/index.css`), and Fraunces on the stage only (the game
   screens: the story text and the narrator), latin and latin-ext subsets, self-hosted from
   `src/assets/fonts/` (`@font-face` at the top of `src/index.css`, OFL in
@@ -52,7 +52,7 @@ product docs; infrastructure is in `khe-homelab`.
   the store's `language`; the header values are the
   `--khe-header-*` properties on `.site-header` in `src/index.css`. The
   footer is `<SiteFooter>` from the same package
-  ([estate ADR-017](https://github.com/khelias/khe-architecture/blob/main/decisions/017-shared-theme-toggle-and-footer.md)):
+  ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md) point 7):
   `App.tsx` passes GitHub, LinkedIn and Privacy, then the AI disclosure and
   the hosting line from `src/i18n/translations.ts`; `src/index.css` places
   it and sets its `--khe-footer-*` values from the app's tokens. A header or
@@ -63,7 +63,7 @@ product docs; infrastructure is in `khe-homelab`.
   with the rooms menu (Mängud current, the game's name after the slash, the
   mark to the khe.ee front page), opened directly or installed it shows the
   product view, the game's name and the language only, with a KHE.ee link in
-  the footer ([estate ADR-030](https://github.com/khelias/khe-architecture/blob/main/decisions/030-the-portfolio-frame-and-the-product-view.md)),
+  the footer (ADR-035 point 11),
   and its accent is the family's `adventure`
   (`--accent` the dark value, `--accent-deep` the light one). The rest of
   the shell does not meet ADR-035 point 1 yet: the stage and its controls
@@ -77,7 +77,7 @@ product docs; infrastructure is in `khe-homelab`.
   its header takes the family's dark values (khe-sites `DESIGN.md`) whatever
   the system prefers, with the `.ee` in the app's violet, and `<html>`
   carries `data-theme="dark"` so the package's dots follow. As a room
-  committed to one theme it shows no theme toggle (estate ADR-017).
+  committed to one theme it shows no theme toggle (estate ADR-035 point 2, ADR-014 point 7).
 - The analytics consent banner is khe-sites', loaded unstamped from the
   games.khe.ee root (`/assets/analytics-consent.js` in `index.html`, kept
   out of the bundle by `vite-ignore`), proxied to games.khe.ee by the dev

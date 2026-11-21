@@ -9,8 +9,8 @@ interface AppSiteHeaderProps {
 }
 
 // The KHE site header: the mark to the khe.ee front page, the rooms menu with
-// Games current and the game's name after the slash (estate ADR-021). Opened
-// directly or installed, only the game's name and the language show (estate ADR-030).
+// Games current and the game's name after the slash (estate ADR-035 point 6). Opened
+// directly or installed, only the game's name and the language show (estate ADR-035 point 11).
 export function AppSiteHeader({ language, onLanguageChange }: AppSiteHeaderProps) {
   const strings = translations[language]
   return (
