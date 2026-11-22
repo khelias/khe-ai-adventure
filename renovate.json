@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "security:minimumReleaseAgeNpm"],
   "labels": ["dependencies"],
   "timezone": "Europe/Tallinn",
   "schedule": ["every weekend"],
@@ -50,7 +50,13 @@
       "automerge": true
     },
     {
-      "description": "The image scanner in ci.yml is itself the supply-chain risk it guards against (estate ADR-008): never automerged, and a release waits a week, long enough for a compromised one to be pulled. Last, so it overrides the automerge rules above.",
+      "description": "Actions releases wait three days, as npm does through security:minimumReleaseAgeNpm. Pins have no release date and are left out.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major", "minor", "patch", "digest"],
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "The image scanner in ci.yml is itself the supply-chain risk it guards against (estate ADR-008): never automerged, and a release waits a week, long enough for a compromised one to be pulled. After the automerge and three-day rules so it overrides both.",
       "matchPackageNames": ["anchore/grype", "ghcr.io/anchore/grype"],
       "minimumReleaseAge": "7 days",
       "automerge": false
@@ -63,6 +69,6 @@
   ],
   "lockFileMaintenance": {
     "enabled": true,
-    "automerge": true
+    "automerge": false
   }
 }

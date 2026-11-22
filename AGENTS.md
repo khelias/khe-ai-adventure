@@ -318,9 +318,12 @@ remove the line and ship a normal build.
 Automated writers
 ([estate ADR-007](https://github.com/khelias/khe-architecture/blob/main/decisions/007-automated-writers.md)): Renovate
 automerges npm patch and minor updates of stable packages, 0.x patches of
-devDependencies, GitHub Actions minor and patch updates, digests, pins and
-lock file maintenance (`renovate.json`, the image scanner excepted), and
-every merge to `main` publishes images that the pin App deploys. The way
+devDependencies, GitHub Actions minor and patch updates, digests and pins
+(`renovate.json`, the image scanner and `@khelias/ui` excepted), and
+every merge to `main` publishes images that the pin App deploys. An npm or
+Actions update is raised only once its release is three days old (seven days
+for Grype). Lock file maintenance is not held by that, so its weekly PR
+waits for a merge by hand. The way
 back from a bad one is to revert its commit on `main` and push, which
 publishes and pins the previous code; when that is too slow, the `sha-`
 rollback above.
