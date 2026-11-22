@@ -8,9 +8,6 @@
     "src/components/GameScreen.tsx": {
       "dash": 1
     },
-    "src/i18n/translations.ts": {
-      "dash": 7
-    },
     "src/index.css": {
       "blur": 3,
       "caps": 36,
