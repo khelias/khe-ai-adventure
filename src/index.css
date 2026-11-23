@@ -133,7 +133,7 @@
 
   /* Semantic states */
   --state-vital:    #34d399;
-  --state-waning:   #fbbf24;
+  --state-waning:   #fb923c;
   --state-failing:  #f87171;
 
   /* Hairlines */
@@ -201,12 +201,11 @@ button {
   touch-action: manipulation;
 }
 
-/* App shell: safe-area aware for webviews/PWA wrappers, still centered on desktop. */
+/* App shell: safe-area top inset is owned by @khelias/ui's .site-header. */
 .app-shell {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top);
 }
 
 /* The KHE site header (<SiteHeader> from @khelias/ui) on the KHE family's dark
@@ -215,9 +214,9 @@ button {
    list's dots, the package's own, their dark values too. The .ee is the app's
    own amber. */
 .site-header {
-  --fam-paper: #0b0d0d; --fam-surface: #121615; --fam-ink: #eef1f0;
-  --fam-muted: #8a928f; --fam-rule: #232827; --fam-rule-strong: #3a413f;
-  --fam-sunken: #171c1b;
+  --fam-paper: #0c0e0f; --fam-surface: #15181a; --fam-ink: #f1f2ee;
+  --fam-muted: #8b928f; --fam-rule: #252a2d; --fam-rule-strong: #3d4448;
+  --fam-sunken: #1d2124;
 
   --khe-header-font: var(--sans);
   --khe-header-title-weight: 500;
@@ -228,19 +227,18 @@ button {
   --khe-header-text-muted: var(--fam-muted);
   --khe-header-focus: var(--accent);
 
-  --khe-header-brand-border: var(--fam-rule-strong);
-  --khe-header-brand-border-hover: var(--fam-muted);
-  --khe-header-brand-bg: var(--fam-paper);
-  --khe-header-brand-shadow: none;
+  --khe-header-brand-radius: 6px;
   --khe-header-suffix: var(--accent);
 
   --khe-header-switcher-radius: 999px;
-  --khe-header-switcher-border: var(--fam-rule);
+  --khe-header-switcher-border: var(--fam-rule-strong);
   --khe-header-switcher-bg: var(--fam-surface);
   --khe-header-button-radius: 999px;
-  --khe-header-button-pressed-bg: var(--fam-paper);
-  --khe-header-button-pressed-border: var(--fam-rule-strong);
+  --khe-header-button-pressed-text: var(--fam-paper);
+  --khe-header-button-pressed-bg: var(--fam-ink);
+  --khe-header-button-pressed-border: var(--fam-ink);
 
+  --khe-header-menu-radius: 10px;
   --khe-header-menu-bg: var(--fam-surface);
   --khe-header-menu-border: var(--fam-rule-strong);
   --khe-header-menu-shadow: 0 12px 32px rgb(0 0 0 / 0.14);
@@ -1255,12 +1253,13 @@ button {
 
 .site-footer {
   --khe-footer-font: var(--sans);
+  --khe-footer-border: var(--line-strong);
   --khe-footer-text: var(--text-faint);
   --khe-footer-text-hover: var(--text-muted);
   --khe-footer-focus: var(--line-accent);
   width: 100%;
   margin-top: auto;
-  padding: 0 max(1rem, env(safe-area-inset-right)) calc(1.2rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  padding: 1rem max(1rem, env(safe-area-inset-right)) calc(1.2rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
 }
 
 /* Shared ghost-link button: tertiary actions, muted.
