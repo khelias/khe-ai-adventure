@@ -1,5 +1,5 @@
 {
-  "version": "0.4.0",
+  "version": "0.10.0",
   "files": {
     "src/components/GameOverScreen.tsx": {
       "dash": 1,
@@ -12,7 +12,7 @@
       "blur": 3,
       "caps": 36,
       "gradient": 31,
-      "palette": 10,
+      "palette": 9,
       "radius": 1,
       "shadow": 31,
       "tracking": 50

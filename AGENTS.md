@@ -68,7 +68,7 @@ product docs; infrastructure is in `khe-homelab`.
   (`--accent` the dark value, `--accent-deep` the light one). Everything
   below the header is the game's content and off the family rule (estate
   ADR-035 point 13): its look is decided here, and the stage and its
-  controls still carry gradients, a violet glow, capitals and wide tracking.
+  controls still carry gradients, an amber glow, capitals and wide tracking.
   `npm run lint` ends with `khe-design-lint` (estate ADR-035 point
   8; usage in khe-ui `AGENTS.md`), against `khe-design-lint-baseline.json`.
   The content being off the family rule does not take it out of the check:
@@ -79,7 +79,7 @@ product docs; infrastructure is in `khe-homelab`.
   dash rules.
   The game is dark by design, a content theme committed to one setting, so
   its header takes the family's dark values (khe-sites `DESIGN.md`) whatever
-  the system prefers, with the `.ee` in the app's violet, and `<html>`
+  the system prefers, with the `.ee` in the app's amber, and `<html>`
   carries `data-theme="dark"` so the package's dots follow. As a room
   committed to one theme it shows no theme toggle (estate ADR-035 point 2, ADR-014 point 7).
 - The analytics consent banner is khe-sites', loaded unstamped from the
