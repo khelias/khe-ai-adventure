@@ -15,7 +15,7 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c68
 # this once a digest that passes the scan on its own ships. The buildx cache
 # keeps an unchanged upgrade layer, so the newest fix is required by version.
 USER root
-RUN apk upgrade --no-cache && apk add --no-cache 'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1'
+RUN apk upgrade --no-cache && apk add --no-cache 'libssl3>=3.5.9-r1' 'libcrypto3>=3.5.9-r1' 'libxml2>=2.13.9-r3'
 USER 101
 
 COPY web/nginx.conf /etc/nginx/conf.d/default.conf
