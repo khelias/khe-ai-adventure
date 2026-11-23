@@ -65,11 +65,15 @@ product docs; infrastructure is in `khe-homelab`.
   product view, the game's name and the language only, with a KHE.ee link in
   the footer (ADR-035 point 11),
   and its accent is the family's `adventure`
-  (`--accent` the dark value, `--accent-deep` the light one). The rest of
-  the shell does not meet ADR-035 point 1 yet: the stage and its controls
-  carry gradients, a violet glow, capitals and wide tracking, a rebuild of
-  its own. `npm run lint` ends with `khe-design-lint` (estate ADR-035 point
+  (`--accent` the dark value, `--accent-deep` the light one). Everything
+  below the header is the game's content and off the family rule (estate
+  ADR-035 point 13): its look is decided here, and the stage and its
+  controls still carry gradients, a violet glow, capitals and wide tracking.
+  `npm run lint` ends with `khe-design-lint` (estate ADR-035 point
   8; usage in khe-ui `AGENTS.md`), against `khe-design-lint-baseline.json`.
+  The content being off the family rule does not take it out of the check:
+  the check reads all of `src/`, the baseline only shrinks, and a departure
+  this repo decides on takes an opt-out line with its reason.
   `khe-design-lint.json` names the narrator's prompts and `lang-packs.ts`,
   text sent to the model, as content, exempt from the emoji, palette and
   dash rules.
