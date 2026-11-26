@@ -211,9 +211,10 @@ sticky hover; a tappable's touch feedback is its `:active` rule.
    `PROXY_MAX_REQUESTS_PER_HOUR` 80, `PROXY_MAX_TOKENS_PER_HOUR` 300000,
    `PROXY_MAX_TOKENS_PER_DAY` 1200000. Across all visitors:
    `PROXY_MAX_TOKENS_GLOBAL_PER_DAY` 5000000, an unverified starting value;
-   the provider-side quota is the real ceiling. The khe-homelab compose passes
-   no `PROXY_MAX_*` variables, so the defaults in `proxy/server.js` are what
-   runs in production. CodeQL is not required here, and its one
+   the provider-side quota is the real ceiling. Those are the defaults in
+   `proxy/server.js`; production sets all four in khe-homelab's
+   `services/apps/games/docker-compose.yml`, which is where to read or change
+   them. CodeQL is not required here, and its one
    `js/system-prompt-injection` alert on `proxy/server.js` is knowingly open
    per ADR 0006. A second alert is the signal worth acting on.
 7. **The proxy serves only this game.** Another app that adds AI output

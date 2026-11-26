@@ -76,8 +76,8 @@ then `X-Real-IP`, then the socket address. An IPv6 address is keyed on its
 These counters are an in-memory cost backstop. They reset when the proxy
 restarts and can be tuned with `PROXY_MAX_REQUESTS_PER_HOUR`,
 `PROXY_MAX_TOKENS_PER_HOUR`, `PROXY_MAX_TOKENS_PER_DAY`, and
-`PROXY_MAX_TOKENS_GLOBAL_PER_DAY`. The khe-homelab compose sets none of them,
-so these defaults are what runs. The Estonian editor pass counts against the
+`PROXY_MAX_TOKENS_GLOBAL_PER_DAY`, which production sets in khe-homelab's
+[`services/apps/games/docker-compose.yml`](https://github.com/khelias/khe-homelab/blob/main/services/apps/games/docker-compose.yml). The Estonian editor pass counts against the
 global budget only, is capped at 40 calls per request, and is skipped when the
 global budget has no room.
 

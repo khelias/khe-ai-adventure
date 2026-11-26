@@ -233,8 +233,8 @@ Limitations:
 - Usage budgets are in-memory process counters, not durable billing controls.
   They are meant to cap repeated valid public calls between deploys. The hard
   ceiling on spend is the quota and budget alert set at the provider.
-- The khe-homelab compose passes no `PROXY_MAX_*` variables, so the defaults in
-  `proxy/server.js` are what runs in production.
+- Production sets every `PROXY_MAX_*` in khe-homelab's
+  [`services/apps/games/docker-compose.yml`](https://github.com/khelias/khe-homelab/blob/main/services/apps/games/docker-compose.yml); the defaults in `proxy/server.js` apply only where one is unset.
 - The acceptable threat model is "public game endpoint with bounded game-shaped
   calls", not "untrusted general-purpose AI gateway".
 

@@ -1,6 +1,6 @@
 # ADR-0006: Client-Supplied System Prompt Is An Accepted, Bounded Risk
 
-- **Status:** Accepted (2026-09-12)
+- **Status:** Accepted (2026-11-27)
 
 ## Context
 
@@ -28,8 +28,8 @@ What already bounds the abuse:
 - Since 2026-09-29, a global budget across all visitors:
   `PROXY_MAX_TOKENS_GLOBAL_PER_DAY`, 5M tokens/day by default, an unverified
   starting value. It also counts the Estonian editor pass, which no per-client
-  budget covers. The khe-homelab compose sets no `PROXY_MAX_*`, so the code
-  defaults run.
+  budget covers. Production sets all four `PROXY_MAX_*` in khe-homelab's
+  [`services/apps/games/docker-compose.yml`](https://github.com/khelias/khe-homelab/blob/main/services/apps/games/docker-compose.yml).
 - The hard ceiling on spend is a quota and budget alert at the provider, which
   the operator manages outside this repo; the in-memory counters reset whenever
   the proxy restarts.

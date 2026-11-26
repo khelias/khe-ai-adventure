@@ -377,8 +377,8 @@ function normalizeSchemaForClaude(node) {
   return node;
 }
 
-// The khe-homelab compose sets the keys, the secret and the two models;
-// everything else runs on these defaults.
+// The khe-homelab compose sets the production values, PROXY_MAX_* included;
+// these defaults apply where a variable is unset.
 function readConfig(env) {
   return {
     GEMINI_API_KEY: env.GEMINI_API_KEY || '',
