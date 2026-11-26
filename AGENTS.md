@@ -169,8 +169,9 @@ proxy/
   *.d.ts           types for the unit tests; not shipped in the image
 web/           Dockerfile, nginx.conf, config.js entrypoint of the web image,
                sw-kill-switch.js
-docs/          ARCHITECTURE, api-contract, model-strategy, prompt-audit,
-               ui-ux, game-systems-audit; ADRs in decisions/
+docs/          api-contract, model-strategy, prompt-audit, ui-ux,
+               game-systems-audit; ADRs in decisions/ (ARCHITECTURE.md is
+               at the root)
 scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.ts,
                pin-homelab.sh (CI's homelab pin PR), README.md
 tests/         ui-smoke.spec.ts, offline/ (the installed app, on a production

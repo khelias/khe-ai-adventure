@@ -6,7 +6,7 @@ explain how the system is shaped and why.
 
 ## Reading Order
 
-1. [Architecture](./ARCHITECTURE.md) — system boundaries, request flows,
+1. [Architecture](../ARCHITECTURE.md) — system boundaries, request flows,
    security posture, deployment, and where to find key code.
 2. [API contract](./api-contract.md) — request shape, schema allowlist, and
    AI-authored vs app-owned fields.

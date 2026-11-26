@@ -165,7 +165,7 @@ npm run schema:hashes
 ```
 
 Then copy changed hashes into `proxy/server.js` and update
-[api-contract.md](./api-contract.md).
+[api-contract.md](docs/api-contract.md).
 
 ## Turn Mechanics
 
@@ -284,7 +284,7 @@ prompts, schemas, and documentation.
 
 ## Related Documents
 
-- [API contract](./api-contract.md)
-- [Model strategy](./model-strategy.md)
-- [Prompt audit](./prompt-audit.md)
-- [Game systems audit](./game-systems-audit.md)
+- [API contract](docs/api-contract.md)
+- [Model strategy](docs/model-strategy.md)
+- [Prompt audit](docs/prompt-audit.md)
+- [Game systems audit](docs/game-systems-audit.md)

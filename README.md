@@ -59,8 +59,10 @@ product docs.
 
 ## More
 
-- [docs/README.md](docs/README.md) - documentation index: architecture, API
-  contract, UI/UX, model strategy, prompt audit
+- [ARCHITECTURE.md](ARCHITECTURE.md) - system boundaries, request flows,
+  security posture, deployment
+- [docs/README.md](docs/README.md) - documentation index: API contract,
+  UI/UX, model strategy, prompt audit
 - [docs/decisions/](docs/decisions/README.md) - architecture decision records
 - [AGENTS.md](AGENTS.md) - commands, layout and invariants for working on the
   code

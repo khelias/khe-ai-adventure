@@ -21,7 +21,7 @@ Shipped:
 - exact schema hash guard in the proxy
 - headless playtest runner, local started-game transcripts, and transcript export
 
-The live architecture is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The live architecture is described in [ARCHITECTURE.md](ARCHITECTURE.md).
 Screen-level UX principles are described in [docs/ui-ux.md](docs/ui-ux.md).
 Hardcoded game-system risks are tracked in
 [docs/game-systems-audit.md](docs/game-systems-audit.md).
