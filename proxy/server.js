@@ -191,6 +191,14 @@ const ALLOWED_ORIGIN_PREFIXES = [
   'http://127.0.0.1:4173',
 ];
 
+// Constant time, so response timing does not reveal how much of a guessed
+// signature was right. timingSafeEqual throws on unequal lengths.
+function signatureMatches(signature, expected) {
+  const given = Buffer.from(signature);
+  const want = Buffer.from(expected);
+  return given.length === want.length && crypto.timingSafeEqual(given, want);
+}
+
 function isAllowedOrigin(req) {
   const origin = req.get('origin') || '';
   if (origin && ALLOWED_ORIGIN_PREFIXES.some((a) => origin === a)) return true;
@@ -604,8 +612,8 @@ function createApp(config, deps = {}) {
       if (!signature) {
         return res.status(401).json({ error: 'Missing signature' });
       }
-      const expected = crypto.createHmac('sha256', API_SECRET).update(req.rawBody).digest('hex');
-      if (signature !== expected) {
+      const expected = crypto.createHmac('sha256', API_SECRET).update(req.rawBody || Buffer.alloc(0)).digest('hex');
+      if (!signatureMatches(signature, expected)) {
         return res.status(401).json({ error: 'Invalid signature' });
       }
     }

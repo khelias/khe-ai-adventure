@@ -153,6 +153,21 @@ describe('proxy /generate guard chain', () => {
       assert.equal(calls.length, 0)
     })
 
+    it('rejects a signature of the wrong length with 401', async () => {
+      const { url, calls } = await start()
+      const res = await post(url, turnRequest(), { secret: null, headers: { 'X-Adventure-Signature': 'abc' } })
+      assert.equal(res.status, 401)
+      assert.deepEqual(res.body, { error: 'Invalid signature' })
+      assert.equal(calls.length, 0)
+    })
+
+    it('rejects a signed request with no body with 401', async () => {
+      const { url, calls } = await start()
+      const res = await fetch(url, { method: 'POST', headers: { Origin: ORIGIN, 'X-Adventure-Signature': 'a'.repeat(64) } })
+      assert.equal(res.status, 401)
+      assert.equal(calls.length, 0)
+    })
+
     it('rejects a signature over a different body with 401', async () => {
       const { url } = await start()
       const signature = createHmac('sha256', SECRET).update('{}').digest('hex')
