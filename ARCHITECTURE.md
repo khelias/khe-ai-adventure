@@ -23,59 +23,26 @@ ends.
 
 ## System Context
 
-```mermaid
-flowchart TB
-    Players["Player group<br/>3-6 people, one shared device"]
-    CF["Cloudflare<br/>DNS, TLS, tunnel"]
-    App["Home server<br/>React SPA + Node proxy"]
-    Gemini["Google Gemini API<br/>default generation + ET editor"]
-    Claude["Anthropic API<br/>opt-in quality mode"]
-
-    Players -->|"games.khe.ee/adventure"| CF
-    CF --> App
-    App --> Gemini
-    App --> Claude
-```
+1. The player group, 3-6 people on one shared device, opens
+   `games.khe.ee/adventure`.
+2. Cloudflare answers DNS, terminates TLS and carries the request through
+   its tunnel to the home server.
+3. The home server runs the React SPA and the Node proxy.
+4. The proxy calls the Google Gemini API for the default generation and the
+   Estonian editor, or the Anthropic API in the opt-in quality mode.
 
 The browser never receives provider API keys and never calls providers directly.
 All AI traffic goes through `adventure-proxy`.
 
 ## Runtime Containers
 
-```mermaid
-flowchart LR
-    Browser["Browser<br/>React SPA"]
-
-    subgraph Games["games container"]
-        NginxWeb["nginx proxy<br/>/adventure/*"]
-        NginxApi["nginx API proxy<br/>/adventure/api/*"]
-        RateLimit["rate limit<br/>CF-Connecting-IP"]
-    end
-
-    subgraph WebC["adventure-web"]
-        Static["Static bundle<br/>runtime config.js"]
-    end
-
-    subgraph Proxy["adventure-proxy"]
-        Guard["origin + HMAC<br/>schema hash allowlist"]
-        Generate["POST /generate"]
-        Editor["ET editor pass"]
-    end
-
-    Gemini["Gemini API"]
-    Claude["Claude API"]
-
-    Browser --> NginxWeb
-    NginxWeb --> Static
-    Browser --> NginxApi
-    NginxApi --> RateLimit
-    RateLimit --> Guard
-    Guard --> Generate
-    Generate --> Gemini
-    Generate --> Claude
-    Generate --> Editor
-    Editor --> Gemini
-```
+| Container | Part | What it does |
+|---|---|---|
+| games | nginx proxy for `/adventure/*` | passes the browser's page requests to `adventure-web` |
+| games | nginx API proxy for `/adventure/api/*` | rate-limits on `CF-Connecting-IP`, then passes to `adventure-proxy` |
+| adventure-web | static bundle | serves the SPA and its runtime `config.js` |
+| adventure-proxy | guard | checks origin and HMAC, and the schema hash against the allowlist |
+| adventure-proxy | `POST /generate` | calls the Gemini or Claude API, then the Estonian editor pass on Gemini |
 
 ## Installed App
 
@@ -87,27 +54,16 @@ secret is fetched when the first request is signed.
 
 ## Main Request Flow
 
-```mermaid
-sequenceDiagram
-    participant UI as Browser
-    participant P as adventure-proxy
-    participant M as AI provider
-    participant E as Gemini editor
-
-    UI->>P: POST /generate { prompt, schema, provider, systemPrompt?, language? }
-    P->>P: origin check
-    P->>P: HMAC check when API_SECRET is configured
-    P->>P: exact schema hash allowlist
-    P->>M: structured generation request
-    M-->>P: schema-shaped response
-    P->>P: normalize malformed turn choices
-    P->>P: retry empty/free-choice contract violations
-    alt language=et
-        P->>E: edit story-facing text
-        E-->>P: corrected text
-    end
-    P-->>UI: { provider, model, data }
-```
+1. The browser sends `POST /generate { prompt, schema, provider, systemPrompt?, language? }`
+   to `adventure-proxy`.
+2. The proxy checks the origin, the HMAC signature when `API_SECRET` is
+   configured, and the schema's hash against the exact allowlist.
+3. It sends a structured generation request to the AI provider, which
+   answers with a schema-shaped response.
+4. It normalizes malformed turn choices and retries empty or free-choice
+   contract violations.
+5. When `language=et`, the Gemini editor corrects the story-facing text.
+6. The proxy answers `{ provider, model, data }`.
 
 The proxy logs provider, model, schema name, latency, token counts, retry counts,
 editor time, Gemini thinking tokens, and Gemini cache hits when available.
@@ -243,25 +199,13 @@ Limitations:
 Both frontend and proxy ship from this repo, as two images built from the same
 commit ([estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)).
 
-```mermaid
-flowchart LR
-    Dev["Developer"]
-    Repo["khe-ai-adventure"]
-    CI["GitHub Actions CI<br/>build, scan, publish"]
-    GHCR["GHCR<br/>web + proxy images"]
-    Homelab["khe-homelab<br/>digest pins"]
-    Nginx["games nginx container"]
-    Web["adventure-web container"]
-    Proxy["adventure-proxy container"]
-
-    Dev -->|"push main"| Repo
-    Repo --> CI
-    CI -->|"sha- and main tags"| GHCR
-    CI -->|"pin PR via App, automerge"| Homelab
-    Homelab -->|"deploy on merge"| Nginx
-    Nginx -->|"/adventure/"| Web
-    Nginx -->|"/adventure/api/"| Proxy
-```
+1. A push to `main` runs GitHub Actions CI, which builds, scans and
+   publishes the web and proxy images to GHCR with `sha-` and `main` tags.
+2. CI opens a pin PR in khe-homelab through the pin App, with auto-merge;
+   khe-homelab holds the digest pins.
+3. The merge deploys: the games nginx container passes `/adventure/` to the
+   `adventure-web` container and `/adventure/api/` to the
+   `adventure-proxy` container.
 
 The homelab repository owns Docker Compose orchestration, the image pins, nginx
 config, network wiring, and environment values. This repo owns the application, proxy code,
