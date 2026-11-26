@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint . && khe-design-lint",
     "preview": "vite preview",
+    "pretest:unit": "test proxy/node_modules/.package-lock.json -nt proxy/package-lock.json -a proxy/node_modules/.package-lock.json -nt proxy/package.json || npm ci --prefix proxy --no-audit --no-fund --silent",
     "test:unit": "TSX_TSCONFIG_PATH=tsconfig.app.json node --import tsx --test tests/unit/*.test.ts",
     "playtest": "tsx scripts/playtest.ts",
     "eval": "tsx scripts/eval/check.ts",

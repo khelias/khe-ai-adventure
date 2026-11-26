@@ -6,14 +6,6 @@ const { parseGeminiResponse } = require('./gemini-response');
 const { createDeadline, runGeneration } = require('./generation');
 const crypto = require('crypto');
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const API_SECRET = process.env.API_SECRET || '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
-const DEFAULT_PROVIDER = process.env.DEFAULT_PROVIDER || 'gemini';
-const PORT = Number(process.env.PORT) || 3000;
-
 // A request may name a model so a playtest can compare candidates without
 // reconfiguring the container between runs. The value is client-supplied, so
 // it is matched against an exact allowlist rather than passed upstream: an
@@ -24,19 +16,6 @@ const MODEL_ALLOWLIST = {
   gemini: ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'],
   claude: ['claude-sonnet-5', 'claude-sonnet-4-6'],
 };
-
-function resolveModel(provider, requested) {
-  const configured = provider === 'claude' ? CLAUDE_MODEL : GEMINI_MODEL;
-  if (!requested) return configured;
-  const allowed = [...new Set([configured, ...(MODEL_ALLOWLIST[provider] || [])])];
-  if (!allowed.includes(requested)) {
-    const err = new Error(`model is not in the allowlist for ${provider}`);
-    err.status = 400;
-    err.publicBody = { error: `model is not in the allowlist for ${provider}`, allowed };
-    throw err;
-  }
-  return requested;
-}
 
 // One deadline covers the whole /generate response: the provider call, the
 // contract retries and the editor pass. nginx in front has
@@ -55,28 +34,10 @@ const INPUT_BUDGETS = {
   turnSchema: { promptChars: 18_000, systemPromptChars: 24_000, totalChars: 38_000, approxTokens: 9_500 },
 };
 
-// globalTokensPerDay is a process-wide ceiling across every visitor. Its
-// default is an unverified starting value; the provider-side quota is the
-// real ceiling.
-const USAGE_LIMITS = {
-  requestsPerHour: parsePositiveInt(process.env.PROXY_MAX_REQUESTS_PER_HOUR, 80),
-  tokensPerHour: parsePositiveInt(process.env.PROXY_MAX_TOKENS_PER_HOUR, 300_000),
-  tokensPerDay: parsePositiveInt(process.env.PROXY_MAX_TOKENS_PER_DAY, 1_200_000),
-  globalTokensPerDay: parsePositiveInt(process.env.PROXY_MAX_TOKENS_GLOBAL_PER_DAY, 5_000_000),
-};
-const usageLimiter = createUsageLimiter(USAGE_LIMITS);
-
-if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
-  console.error('FATAL: at least one of GEMINI_API_KEY or ANTHROPIC_API_KEY must be set');
-  process.exit(1);
-}
-
-const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 // The key goes in a header, not the query string, so it never lands in a URL
 // that an error, a trace or an intermediary might log.
 const geminiUrl = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-const geminiHeaders = () => ({ 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY });
 
 // Gemini 2.5 and 3 default to no blocking at all. The audience is adult and
 // Dark mode is horror by design, so only high-probability harm is blocked.
@@ -106,15 +67,6 @@ function editorThinkingConfig(model) {
   }
   return undefined;
 }
-
-const app = express();
-app.use(express.json({ 
-  limit: '1mb', 
-  type: '*/*',
-  verify: (req, res, buf) => {
-    req.rawBody = buf;
-  }
-}));
 
 // ---- Abuse protections ----
 //
@@ -247,116 +199,6 @@ function isAllowedOrigin(req) {
   return false;
 }
 
-app.get('/healthz', (_req, res) => res.status(200).send('ok'));
-
-app.post('/generate', async (req, res) => {
-  if (!isAllowedOrigin(req)) {
-    return res.status(403).json({ error: 'Origin not allowed' });
-  }
-  if (API_SECRET) {
-    const signature = req.headers['x-adventure-signature'];
-    if (!signature) {
-      return res.status(401).json({ error: 'Missing signature' });
-    }
-    const expected = crypto.createHmac('sha256', API_SECRET).update(req.rawBody).digest('hex');
-    if (signature !== expected) {
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-  }
-  const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt, language, model } = req.body || {};
-  if (typeof prompt !== 'string' || !prompt.trim() || typeof schema !== 'object' || !schema) {
-    return res.status(400).json({ error: 'prompt (string) and schema (object) are required' });
-  }
-  if (typeof systemPrompt !== 'undefined' && typeof systemPrompt !== 'string') {
-    return res.status(400).json({ error: 'systemPrompt must be a string when provided' });
-  }
-  if (typeof language !== 'undefined' && language !== 'et' && language !== 'en') {
-    return res.status(400).json({ error: 'language must be et or en when provided' });
-  }
-  const knownSchema = schemaLabel(schema);
-  if (!knownSchema) {
-    return res.status(400).json({
-      error: `schema is not in the allowlist${schemaFingerprint(schema) ? ` (${schemaFingerprint(schema)})` : ''}`,
-    });
-  }
-  if (systemPrompt && knownSchema !== 'turnSchema') {
-    return res.status(400).json({ error: 'systemPrompt is only accepted for turnSchema requests' });
-  }
-  if (provider !== 'claude' && provider !== 'gemini') {
-    return res.status(400).json({ error: `unknown provider: ${provider}` });
-  }
-  if (typeof model !== 'undefined' && typeof model !== 'string') {
-    return res.status(400).json({ error: 'model must be a string when provided' });
-  }
-  let effectiveModel;
-  try {
-    effectiveModel = resolveModel(provider, model);
-  } catch (err) {
-    return res.status(err.status || 400).json(err.publicBody || { error: err.message });
-  }
-  const t0 = Date.now();
-  const deadline = createDeadline(REQUEST_BUDGET_MS);
-  try {
-    const callOnce = async (extraPrompt, signal) => {
-      const budget = validateInputBudget({
-        schemaName: knownSchema,
-        prompt,
-        systemPrompt,
-        extraPrompt,
-      });
-      if (!budget.ok) throw budgetExceededError(budget);
-      const reservation = usageLimiter.reserveClientBudget(req, budget.received.approxTokens);
-      const fullPrompt = prompt + extraPrompt;
-      let result;
-      try {
-        result = provider === 'claude'
-          ? await callClaude({ prompt: fullPrompt, schema, systemPrompt, model: effectiveModel, signal })
-          : await callGemini({ prompt: fullPrompt, schema, systemPrompt, model: effectiveModel, signal });
-      } catch (e) {
-        usageLimiter.adjustClientBudget(reservation, Number(e?.totalTokens) || 0);
-        throw e;
-      }
-      usageLimiter.adjustClientBudget(reservation, tokenCountFromUsage(result.tokens));
-      return result;
-    };
-
-    const {
-      result, retried, costRetried, coercedGameOver, editorApplied, editorMs, editorTokens,
-    } = await runGeneration({
-      callOnce,
-      editTurn: estonianEditorPass,
-      editStructured: estonianStructuredTextEditorPass,
-      editorEnabled: language === 'et' && Boolean(GEMINI_API_KEY),
-      language,
-      provider,
-      deadline,
-      minRetryMs: MIN_RETRY_BUDGET_MS,
-    });
-
-    const ms = Date.now() - t0;
-    const cacheHit = result.cacheHit;
-    const tokens = result.tokens || { in: 0, out: 0 };
-    console.log(
-      `proxy ok: schema=${knownSchema} provider=${provider} model=${result.model} ms=${ms} in=${tokens.in} out=${tokens.out}${tokens.thoughts ? ` thoughts=${tokens.thoughts}` : ''}${tokens.total ? ` total=${tokens.total}` : ''}${cacheHit != null ? ` cache=${cacheHit}` : ''}${editorApplied ? ` editor=${editorMs}ms` : ''}${editorTokens != null ? ` editor_tokens=${editorTokens}` : ''}${retried ? ` retried=${retried}` : ''}${costRetried ? ` cost-retried=${costRetried}` : ''}${coercedGameOver ? ' coerced-gameover' : ''}`,
-    );
-    res.json({ provider, model: result.model, data: result.data });
-  } catch (err) {
-    if (err.name === 'AbortError' || deadline.signal.aborted) {
-      console.error('proxy: upstream timeout', { provider });
-      return res.status(504).json({ error: 'Upstream timeout' });
-    }
-    const status = err.status || 500;
-    // provider is already constrained to claude|gemini above, but keeping
-    // request values out of the format-string position removes the question.
-    console.error('proxy: error', { provider, status, message: err.message || String(err) });
-    // Only the proxy's own errors carry a publicBody. A provider message can
-    // echo request details or account state, so the client gets a generic one.
-    res.status(status).json(err.publicBody || { error: 'Upstream error' });
-  } finally {
-    deadline.clear();
-  }
-});
-
 // Estonian editor pass: send the scene (and optional gameOverText) through
 // Gemini Flash with a strict editorial prompt. Fixes invented words, wrong
 // word register, and non-native sentence structure while preserving facts.
@@ -392,7 +234,7 @@ const EDITOR_SCHEMA = {
 // whatever is left of it when that is less.
 const EDITOR_TOTAL_BUDGET_MS = 25_000;
 
-async function estonianEditorPass(turnData, signal) {
+function turnEditorTasks(turnData) {
   // Each task: { label, text, apply }. `apply(corrected)` writes the edited
   // text back to its home in turnData. Choice tasks carry their index so the
   // right element is updated.
@@ -433,17 +275,15 @@ async function estonianEditorPass(turnData, signal) {
       }
     });
   }
-  if (tasks.length === 0) return { applied: false, tokens: 0 };
-  return runEditorTasks(tasks, signal);
+  return tasks;
 }
 
-async function estonianStructuredTextEditorPass(data, signal) {
+function structuredEditorTasks(data) {
   const tasks = [];
   addStoryTextTasks(tasks, data);
   addCustomStoryTextTasks(tasks, data);
   addSequelTextTasks(tasks, data);
-  if (tasks.length === 0) return { applied: false, tokens: 0 };
-  return runEditorTasks(tasks, signal);
+  return tasks;
 }
 
 function addTextTask(tasks, label, text, apply, minLen = 5) {
@@ -507,82 +347,6 @@ function addParameterTextTasks(tasks, parameters, labelPrefix) {
 const EDITOR_MAX_TASKS = 40;
 const EDITOR_SYSTEM_TOKENS = Math.ceil(EDITOR_SYSTEM.length / APPROX_CHARS_PER_TOKEN);
 
-async function runEditorTasks(allTasks, requestSignal) {
-  let tasks = allTasks;
-  if (tasks.length > EDITOR_MAX_TASKS) {
-    console.warn(`editor-pass capped at ${EDITOR_MAX_TASKS} of ${tasks.length} tasks; the rest stay unedited`);
-    tasks = tasks.slice(0, EDITOR_MAX_TASKS);
-  }
-  // Rough cost: the system prompt per call plus the text in and out.
-  const estimatedTokens = tasks.reduce(
-    (sum, task) => sum + EDITOR_SYSTEM_TOKENS + 2 * Math.ceil(task.text.length / APPROX_CHARS_PER_TOKEN),
-    0,
-  );
-  if (!usageLimiter.hasGlobalRoom(estimatedTokens)) {
-    console.warn(`editor-pass skipped: global daily token budget has no room for ~${estimatedTokens} tokens`);
-    return { applied: false, tokens: 0 };
-  }
-
-  const signal = AbortSignal.any([requestSignal, AbortSignal.timeout(EDITOR_TOTAL_BUDGET_MS)]);
-
-  let tokens = 0;
-  try {
-    const results = await Promise.all(tasks.map(async (task) => {
-      try {
-        const { corrected, totalTokens } = await editorCall(task.text, signal);
-        tokens += totalTokens;
-        return { task, edited: corrected };
-      } catch (e) {
-        // Per-task failure: log and leave field unedited. Don't fail the whole pass.
-        tokens += Number(e?.totalTokens) || 0;
-        console.warn(`editor-pass ${task.label} failed: ${e.message || e}`);
-        return { task, edited: null };
-      }
-    }));
-    for (const { task, edited } of results) {
-      if (edited && edited.length > 0) task.apply(edited);
-    }
-  } finally {
-    usageLimiter.adjustGlobalBudget(tokens);
-  }
-  return { applied: true, tokens };
-}
-
-async function editorCall(text, externalSignal) {
-  const body = {
-    contents: [{ role: 'user', parts: [{ text }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: EDITOR_SCHEMA,
-      temperature: 0.2,
-      maxOutputTokens: EDITOR_MAX_OUTPUT_TOKENS,
-    },
-    safetySettings: GEMINI_SAFETY_SETTINGS,
-    systemInstruction: { parts: [{ text: EDITOR_SYSTEM }] },
-  };
-  const thinkingConfig = editorThinkingConfig(GEMINI_MODEL);
-  if (thinkingConfig) body.generationConfig.thinkingConfig = thinkingConfig;
-  const res = await fetch(geminiUrl(GEMINI_MODEL), {
-    method: 'POST',
-    headers: geminiHeaders(),
-    body: JSON.stringify(body),
-    signal: externalSignal,
-  });
-  if (!res.ok) throw new Error(`editor HTTP ${res.status}`);
-  const raw = await res.json();
-  const totalTokens = Number(raw?.usageMetadata?.totalTokenCount) || 0;
-  let responseText;
-  try {
-    responseText = parseGeminiResponse(raw).text;
-  } catch (e) {
-    // A blocked or truncated call is still billed.
-    e.totalTokens = totalTokens;
-    throw e;
-  }
-  const parsed = JSON.parse(responseText);
-  return { corrected: typeof parsed.corrected === 'string' ? parsed.corrected : null, totalTokens };
-}
-
 // Game schemas were written for Gemini's responseSchema, which accepts
 // uppercase type names ("OBJECT", "STRING", ...). JSON Schema (and thus
 // Claude's tool input_schema) requires lowercase. Walk the schema tree and
@@ -605,101 +369,356 @@ function normalizeSchemaForClaude(node) {
   return node;
 }
 
-async function callClaude({ prompt, schema, systemPrompt, model, signal }) {
-  const claudeModel = model || CLAUDE_MODEL;
-  if (!anthropic) {
-    const err = new Error('Claude not configured on this proxy');
-    err.status = 503;
-    err.publicBody = { error: err.message };
-    throw err;
-  }
-  const createParams = {
-    model: claudeModel,
-    max_tokens: 2000,
-    tools: [
-      {
-        name: 'respond',
-        description: 'Submit the structured response that matches the requested schema.',
-        input_schema: normalizeSchemaForClaude(schema),
-      },
-    ],
-    tool_choice: { type: 'tool', name: 'respond' },
-    messages: [{ role: 'user', content: prompt }],
-  };
-  if (systemPrompt) {
-    createParams.system = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
-  }
-  const message = await anthropic.messages.create(createParams, { signal });
-
-  const toolUse = message.content.find((b) => b.type === 'tool_use');
-  if (!toolUse || typeof toolUse.input !== 'object') {
-    throw new Error('Claude did not emit a structured tool_use block');
-  }
-  const usage = message.usage;
-  const cacheHit = usage?.cache_read_input_tokens > 0 ? `${usage.cache_read_input_tokens}tok` : 'miss';
-  return { model: claudeModel, data: toolUse.input, cacheHit, tokens: { in: usage?.input_tokens || 0, out: usage?.output_tokens || 0 } };
-}
-
-async function callGemini({ prompt, schema, systemPrompt, model, signal }) {
-  const geminiModel = model || GEMINI_MODEL;
-  if (!GEMINI_API_KEY) {
-    const err = new Error('Gemini not configured on this proxy');
-    err.status = 503;
-    err.publicBody = { error: err.message };
-    throw err;
-  }
-  const geminiBody = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: schema,
-      temperature: 0.8,
-      maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
-    },
-    safetySettings: GEMINI_SAFETY_SETTINGS,
-  };
-  if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
-  const upstream = await fetch(geminiUrl(geminiModel), {
-    method: 'POST',
-    headers: geminiHeaders(),
-    body: JSON.stringify(geminiBody),
-    signal,
-  });
-  const body = await upstream.json();
-  if (!upstream.ok) {
-    const err = new Error(body?.error?.message || 'Gemini upstream error');
-    err.status = upstream.status;
-    throw err;
-  }
-  let text;
-  let usageMetadata;
-  let data;
-  try {
-    ({ text, usageMetadata } = parseGeminiResponse(body));
-    data = JSON.parse(text);
-  } catch (e) {
-    // A blocked, truncated or unparsable response is still billed.
-    e.totalTokens = Number(body?.usageMetadata?.totalTokenCount) || 0;
-    throw e;
-  }
-  const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
+// The khe-homelab compose sets the keys, the secret and the two models;
+// everything else runs on these defaults.
+function readConfig(env) {
   return {
-    model: geminiModel,
-    data,
-    cacheHit: cachedTokens > 0 ? `${cachedTokens}tok` : null,
-    tokens: {
-      in: usageMetadata.promptTokenCount || 0,
-      out: usageMetadata.candidatesTokenCount || 0,
-      thoughts: usageMetadata.thoughtsTokenCount || 0,
-      total: usageMetadata.totalTokenCount || 0,
+    GEMINI_API_KEY: env.GEMINI_API_KEY || '',
+    ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY || '',
+    API_SECRET: env.API_SECRET || '',
+    GEMINI_MODEL: env.GEMINI_MODEL || 'gemini-2.5-flash',
+    CLAUDE_MODEL: env.CLAUDE_MODEL || 'claude-sonnet-4-6',
+    DEFAULT_PROVIDER: env.DEFAULT_PROVIDER || 'gemini',
+    PORT: Number(env.PORT) || 3000,
+    // globalTokensPerDay is a process-wide ceiling across every visitor. Its
+    // default is an unverified starting value; the provider-side quota is the
+    // real ceiling.
+    USAGE_LIMITS: {
+      requestsPerHour: parsePositiveInt(env.PROXY_MAX_REQUESTS_PER_HOUR, 80),
+      tokensPerHour: parsePositiveInt(env.PROXY_MAX_TOKENS_PER_HOUR, 300_000),
+      tokensPerDay: parsePositiveInt(env.PROXY_MAX_TOKENS_PER_DAY, 1_200_000),
+      globalTokensPerDay: parsePositiveInt(env.PROXY_MAX_TOKENS_GLOBAL_PER_DAY, 5_000_000),
     },
   };
 }
 
-app.listen(PORT, () => {
-  const claudeInfo = anthropic ? CLAUDE_MODEL : 'disabled';
-  const geminiInfo = GEMINI_API_KEY ? GEMINI_MODEL : 'disabled';
-  console.log(
-    `adventure-proxy listening on :${PORT} | default=${DEFAULT_PROVIDER} | claude=${claudeInfo} | gemini=${geminiInfo}`,
-  );
-});
+// `deps` lets the tests replace the two ways out of the process: the Gemini
+// fetch and the Anthropic client.
+function createApp(config, deps = {}) {
+  const {
+    GEMINI_API_KEY, ANTHROPIC_API_KEY, API_SECRET, GEMINI_MODEL, CLAUDE_MODEL, DEFAULT_PROVIDER, USAGE_LIMITS,
+  } = config;
+  const upstreamFetch = deps.fetch || globalThis.fetch;
+  const anthropic = deps.anthropic || (ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null);
+  const usageLimiter = createUsageLimiter(USAGE_LIMITS);
+  const geminiHeaders = () => ({ 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY });
+
+  function resolveModel(provider, requested) {
+    const configured = provider === 'claude' ? CLAUDE_MODEL : GEMINI_MODEL;
+    if (!requested) return configured;
+    const allowed = [...new Set([configured, ...(MODEL_ALLOWLIST[provider] || [])])];
+    if (!allowed.includes(requested)) {
+      const err = new Error(`model is not in the allowlist for ${provider}`);
+      err.status = 400;
+      err.publicBody = { error: `model is not in the allowlist for ${provider}`, allowed };
+      throw err;
+    }
+    return requested;
+  }
+
+  async function runEditorTasks(allTasks, requestSignal) {
+    if (allTasks.length === 0) return { applied: false, tokens: 0 };
+    let tasks = allTasks;
+    if (tasks.length > EDITOR_MAX_TASKS) {
+      console.warn(`editor-pass capped at ${EDITOR_MAX_TASKS} of ${tasks.length} tasks; the rest stay unedited`);
+      tasks = tasks.slice(0, EDITOR_MAX_TASKS);
+    }
+    // Rough cost: the system prompt per call plus the text in and out.
+    const estimatedTokens = tasks.reduce(
+      (sum, task) => sum + EDITOR_SYSTEM_TOKENS + 2 * Math.ceil(task.text.length / APPROX_CHARS_PER_TOKEN),
+      0,
+    );
+    if (!usageLimiter.hasGlobalRoom(estimatedTokens)) {
+      console.warn(`editor-pass skipped: global daily token budget has no room for ~${estimatedTokens} tokens`);
+      return { applied: false, tokens: 0 };
+    }
+
+    const signal = AbortSignal.any([requestSignal, AbortSignal.timeout(EDITOR_TOTAL_BUDGET_MS)]);
+
+    let tokens = 0;
+    try {
+      const results = await Promise.all(tasks.map(async (task) => {
+        try {
+          const { corrected, totalTokens } = await editorCall(task.text, signal);
+          tokens += totalTokens;
+          return { task, edited: corrected };
+        } catch (e) {
+          // Per-task failure: log and leave field unedited. Don't fail the whole pass.
+          tokens += Number(e?.totalTokens) || 0;
+          console.warn(`editor-pass ${task.label} failed: ${e.message || e}`);
+          return { task, edited: null };
+        }
+      }));
+      for (const { task, edited } of results) {
+        if (edited && edited.length > 0) task.apply(edited);
+      }
+    } finally {
+      usageLimiter.adjustGlobalBudget(tokens);
+    }
+    return { applied: true, tokens };
+  }
+
+  async function editorCall(text, externalSignal) {
+    const body = {
+      contents: [{ role: 'user', parts: [{ text }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: EDITOR_SCHEMA,
+        temperature: 0.2,
+        maxOutputTokens: EDITOR_MAX_OUTPUT_TOKENS,
+      },
+      safetySettings: GEMINI_SAFETY_SETTINGS,
+      systemInstruction: { parts: [{ text: EDITOR_SYSTEM }] },
+    };
+    const thinkingConfig = editorThinkingConfig(GEMINI_MODEL);
+    if (thinkingConfig) body.generationConfig.thinkingConfig = thinkingConfig;
+    const res = await upstreamFetch(geminiUrl(GEMINI_MODEL), {
+      method: 'POST',
+      headers: geminiHeaders(),
+      body: JSON.stringify(body),
+      signal: externalSignal,
+    });
+    if (!res.ok) throw new Error(`editor HTTP ${res.status}`);
+    const raw = await res.json();
+    const totalTokens = Number(raw?.usageMetadata?.totalTokenCount) || 0;
+    let responseText;
+    try {
+      responseText = parseGeminiResponse(raw).text;
+    } catch (e) {
+      // A blocked or truncated call is still billed.
+      e.totalTokens = totalTokens;
+      throw e;
+    }
+    const parsed = JSON.parse(responseText);
+    return { corrected: typeof parsed.corrected === 'string' ? parsed.corrected : null, totalTokens };
+  }
+
+  async function callClaude({ prompt, schema, systemPrompt, model, signal }) {
+    const claudeModel = model || CLAUDE_MODEL;
+    if (!anthropic) {
+      const err = new Error('Claude not configured on this proxy');
+      err.status = 503;
+      err.publicBody = { error: err.message };
+      throw err;
+    }
+    const createParams = {
+      model: claudeModel,
+      max_tokens: 2000,
+      tools: [
+        {
+          name: 'respond',
+          description: 'Submit the structured response that matches the requested schema.',
+          input_schema: normalizeSchemaForClaude(schema),
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'respond' },
+      messages: [{ role: 'user', content: prompt }],
+    };
+    if (systemPrompt) {
+      createParams.system = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
+    }
+    const message = await anthropic.messages.create(createParams, { signal });
+
+    const toolUse = message.content.find((b) => b.type === 'tool_use');
+    if (!toolUse || typeof toolUse.input !== 'object') {
+      throw new Error('Claude did not emit a structured tool_use block');
+    }
+    const usage = message.usage;
+    const cacheHit = usage?.cache_read_input_tokens > 0 ? `${usage.cache_read_input_tokens}tok` : 'miss';
+    return { model: claudeModel, data: toolUse.input, cacheHit, tokens: { in: usage?.input_tokens || 0, out: usage?.output_tokens || 0 } };
+  }
+
+  async function callGemini({ prompt, schema, systemPrompt, model, signal }) {
+    const geminiModel = model || GEMINI_MODEL;
+    if (!GEMINI_API_KEY) {
+      const err = new Error('Gemini not configured on this proxy');
+      err.status = 503;
+      err.publicBody = { error: err.message };
+      throw err;
+    }
+    const geminiBody = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        temperature: 0.8,
+        maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
+      },
+      safetySettings: GEMINI_SAFETY_SETTINGS,
+    };
+    if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
+    const upstream = await upstreamFetch(geminiUrl(geminiModel), {
+      method: 'POST',
+      headers: geminiHeaders(),
+      body: JSON.stringify(geminiBody),
+      signal,
+    });
+    const body = await upstream.json();
+    if (!upstream.ok) {
+      const err = new Error(body?.error?.message || 'Gemini upstream error');
+      err.status = upstream.status;
+      throw err;
+    }
+    let text;
+    let usageMetadata;
+    let data;
+    try {
+      ({ text, usageMetadata } = parseGeminiResponse(body));
+      data = JSON.parse(text);
+    } catch (e) {
+      // A blocked, truncated or unparsable response is still billed.
+      e.totalTokens = Number(body?.usageMetadata?.totalTokenCount) || 0;
+      throw e;
+    }
+    const cachedTokens = usageMetadata.cachedContentTokenCount || 0;
+    return {
+      model: geminiModel,
+      data,
+      cacheHit: cachedTokens > 0 ? `${cachedTokens}tok` : null,
+      tokens: {
+        in: usageMetadata.promptTokenCount || 0,
+        out: usageMetadata.candidatesTokenCount || 0,
+        thoughts: usageMetadata.thoughtsTokenCount || 0,
+        total: usageMetadata.totalTokenCount || 0,
+      },
+    };
+  }
+
+  const app = express();
+  app.use(express.json({ 
+    limit: '1mb', 
+    type: '*/*',
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
+
+  app.get('/healthz', (_req, res) => res.status(200).send('ok'));
+
+  app.post('/generate', async (req, res) => {
+    if (!isAllowedOrigin(req)) {
+      return res.status(403).json({ error: 'Origin not allowed' });
+    }
+    if (API_SECRET) {
+      const signature = req.headers['x-adventure-signature'];
+      if (!signature) {
+        return res.status(401).json({ error: 'Missing signature' });
+      }
+      const expected = crypto.createHmac('sha256', API_SECRET).update(req.rawBody).digest('hex');
+      if (signature !== expected) {
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+    const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt, language, model } = req.body || {};
+    if (typeof prompt !== 'string' || !prompt.trim() || typeof schema !== 'object' || !schema) {
+      return res.status(400).json({ error: 'prompt (string) and schema (object) are required' });
+    }
+    if (typeof systemPrompt !== 'undefined' && typeof systemPrompt !== 'string') {
+      return res.status(400).json({ error: 'systemPrompt must be a string when provided' });
+    }
+    if (typeof language !== 'undefined' && language !== 'et' && language !== 'en') {
+      return res.status(400).json({ error: 'language must be et or en when provided' });
+    }
+    const knownSchema = schemaLabel(schema);
+    if (!knownSchema) {
+      return res.status(400).json({
+        error: `schema is not in the allowlist${schemaFingerprint(schema) ? ` (${schemaFingerprint(schema)})` : ''}`,
+      });
+    }
+    if (systemPrompt && knownSchema !== 'turnSchema') {
+      return res.status(400).json({ error: 'systemPrompt is only accepted for turnSchema requests' });
+    }
+    if (provider !== 'claude' && provider !== 'gemini') {
+      return res.status(400).json({ error: `unknown provider: ${provider}` });
+    }
+    if (typeof model !== 'undefined' && typeof model !== 'string') {
+      return res.status(400).json({ error: 'model must be a string when provided' });
+    }
+    let effectiveModel;
+    try {
+      effectiveModel = resolveModel(provider, model);
+    } catch (err) {
+      return res.status(err.status || 400).json(err.publicBody || { error: err.message });
+    }
+    const t0 = Date.now();
+    const deadline = createDeadline(REQUEST_BUDGET_MS);
+    try {
+      const callOnce = async (extraPrompt, signal) => {
+        const budget = validateInputBudget({
+          schemaName: knownSchema,
+          prompt,
+          systemPrompt,
+          extraPrompt,
+        });
+        if (!budget.ok) throw budgetExceededError(budget);
+        const reservation = usageLimiter.reserveClientBudget(req, budget.received.approxTokens);
+        const fullPrompt = prompt + extraPrompt;
+        let result;
+        try {
+          result = provider === 'claude'
+            ? await callClaude({ prompt: fullPrompt, schema, systemPrompt, model: effectiveModel, signal })
+            : await callGemini({ prompt: fullPrompt, schema, systemPrompt, model: effectiveModel, signal });
+        } catch (e) {
+          usageLimiter.adjustClientBudget(reservation, Number(e?.totalTokens) || 0);
+          throw e;
+        }
+        usageLimiter.adjustClientBudget(reservation, tokenCountFromUsage(result.tokens));
+        return result;
+      };
+
+      const {
+        result, retried, costRetried, coercedGameOver, editorApplied, editorMs, editorTokens,
+      } = await runGeneration({
+        callOnce,
+        editTurn: (data, signal) => runEditorTasks(turnEditorTasks(data), signal),
+        editStructured: (data, signal) => runEditorTasks(structuredEditorTasks(data), signal),
+        editorEnabled: language === 'et' && Boolean(GEMINI_API_KEY),
+        language,
+        provider,
+        deadline,
+        minRetryMs: MIN_RETRY_BUDGET_MS,
+      });
+
+      const ms = Date.now() - t0;
+      const cacheHit = result.cacheHit;
+      const tokens = result.tokens || { in: 0, out: 0 };
+      console.log(
+        `proxy ok: schema=${knownSchema} provider=${provider} model=${result.model} ms=${ms} in=${tokens.in} out=${tokens.out}${tokens.thoughts ? ` thoughts=${tokens.thoughts}` : ''}${tokens.total ? ` total=${tokens.total}` : ''}${cacheHit != null ? ` cache=${cacheHit}` : ''}${editorApplied ? ` editor=${editorMs}ms` : ''}${editorTokens != null ? ` editor_tokens=${editorTokens}` : ''}${retried ? ` retried=${retried}` : ''}${costRetried ? ` cost-retried=${costRetried}` : ''}${coercedGameOver ? ' coerced-gameover' : ''}`,
+      );
+      res.json({ provider, model: result.model, data: result.data });
+    } catch (err) {
+      if (err.name === 'AbortError' || deadline.signal.aborted) {
+        console.error('proxy: upstream timeout', { provider });
+        return res.status(504).json({ error: 'Upstream timeout' });
+      }
+      const status = err.status || 500;
+      // provider is already constrained to claude|gemini above, but keeping
+      // request values out of the format-string position removes the question.
+      console.error('proxy: error', { provider, status, message: err.message || String(err) });
+      // Only the proxy's own errors carry a publicBody. A provider message can
+      // echo request details or account state, so the client gets a generic one.
+      res.status(status).json(err.publicBody || { error: 'Upstream error' });
+    } finally {
+      deadline.clear();
+    }
+  });
+
+  return app;
+}
+
+if (require.main === module) {
+  const config = readConfig(process.env);
+  if (!config.GEMINI_API_KEY && !config.ANTHROPIC_API_KEY) {
+    console.error('FATAL: at least one of GEMINI_API_KEY or ANTHROPIC_API_KEY must be set');
+    process.exit(1);
+  }
+  createApp(config).listen(config.PORT, () => {
+    const claudeInfo = config.ANTHROPIC_API_KEY ? config.CLAUDE_MODEL : 'disabled';
+    const geminiInfo = config.GEMINI_API_KEY ? config.GEMINI_MODEL : 'disabled';
+    console.log(
+      `adventure-proxy listening on :${config.PORT} | default=${config.DEFAULT_PROVIDER} | claude=${claudeInfo} | gemini=${geminiInfo}`,
+    );
+  });
+}
+
+module.exports = { createApp, readConfig };

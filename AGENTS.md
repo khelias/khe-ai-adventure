@@ -95,7 +95,11 @@ product docs; infrastructure is in `khe-homelab`.
 - `npm run build` - `tsc -b && vite build`
 - `npm run lint` - ESLint with type-aware rules
 - `npm run test:unit` - node:test via tsx, which takes JSX settings from
-  `tsconfig.app.json` so a test can render a component
+  `tsconfig.app.json` so a test can render a component; it first runs
+  `npm ci` in `proxy/` when its `node_modules` is missing or older than
+  `package.json` or the lock file, because `proxy-server.test.ts` drives the real
+  Express app (`createApp` in `proxy/server.js`, which listens only as the
+  entry point) with the provider calls stubbed
 - `npm run ui:smoke` - headless Playwright against the Mock provider;
   `PLAYWRIGHT_BASE_URL` reuses a running server instead of starting one,
   `PLAYWRIGHT_BROWSER_CHANNEL` picks a local browser over bundled Chromium.
@@ -171,7 +175,7 @@ scripts/       playtest.ts, eval/{check,lib}.ts, proxy-smoke.ts, schema-hashes.t
                pin-homelab.sh (CI's homelab pin PR), README.md
 tests/         ui-smoke.spec.ts, offline/ (the installed app, on a production
                build), unit/{game,eval,runtime-config,proxy-limits,
-               proxy-generation,gemini-response,sheet-motion,
+               proxy-generation,proxy-server,gemini-response,sheet-motion,
                site-header}.test.ts
 ```
 
