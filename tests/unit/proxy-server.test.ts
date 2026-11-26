@@ -339,6 +339,44 @@ describe('proxy /generate guard chain', () => {
         { type: 'text', text: 'You are the narrator.', cache_control: { type: 'ephemeral' } },
       ])
     })
+
+    it('reaches the Anthropic API through the real SDK client', async () => {
+      // Renovate automerges SDK minors, and the stubbed client above would not notice a changed request or response.
+      const requests: { url: string; version: string | undefined; body: Record<string, unknown> }[] = []
+      const fakeApi = createServer((req, res) => {
+        let raw = ''
+        req.on('data', (chunk: Buffer) => { raw += chunk.toString() })
+        req.on('end', () => {
+          requests.push({
+            url: req.url ?? '',
+            version: req.headers['anthropic-version'] as string | undefined,
+            body: JSON.parse(raw) as Record<string, unknown>,
+          })
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({
+            id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-sonnet-5', stop_reason: 'tool_use',
+            content: [{ type: 'tool_use', id: 'toolu_test', name: 'respond', input: validTurn }],
+            usage: { input_tokens: 10, output_tokens: 5 },
+          }))
+        })
+      })
+      await new Promise<void>((resolve) => fakeApi.listen(0, '127.0.0.1', resolve))
+      process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${(fakeApi.address() as AddressInfo).port}`
+      try {
+        const { url } = await start({ ANTHROPIC_API_KEY: 'test-anthropic-key' })
+        const res = await post(url, turnRequest({ provider: 'claude', model: 'claude-sonnet-5' }))
+        assert.equal(res.status, 200)
+        assert.deepEqual(res.body, { provider: 'claude', model: 'claude-sonnet-5', data: validTurn })
+        assert.equal(requests.length, 1)
+        assert.equal(requests[0]!.url, '/v1/messages')
+        assert.ok(requests[0]!.version, 'the SDK sends an anthropic-version header')
+        assert.deepEqual(requests[0]!.body.tool_choice, { type: 'tool', name: 'respond' })
+        assert.equal('temperature' in requests[0]!.body, false)
+      } finally {
+        delete process.env.ANTHROPIC_BASE_URL
+        await new Promise<void>((resolve) => fakeApi.close(() => resolve()))
+      }
+    })
   })
 })
 
