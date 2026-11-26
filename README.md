@@ -1,17 +1,20 @@
-# AI Adventure Engine
+# khe-ai-adventure
 
 [![CI](https://github.com/khelias/khe-ai-adventure/actions/workflows/ci.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/khelias/khe-ai-adventure/actions/workflows/codeql.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/codeql.yml)
 
-A party adventure game for 3-6 adult players around one phone, live at
+**AI Adventure Engine**: a party adventure game for 3-6 adult players around
+one phone, in Estonian and English. Live at
 [games.khe.ee/adventure](https://games.khe.ee/adventure/).
+
+[![The game setup screen at games.khe.ee/adventure](docs/screenshot.png)](https://games.khe.ee/adventure/)
+
+## How it works
 
 One person reads the story aloud, the group debates the next move, and the AI
 continues the adventure. It is built for a real table: fast setup, private
 objectives revealed by passing the phone, shared pressure everyone can see,
 and short turns that keep the room moving.
-
-## Why it exists
 
 It is both a playable game and a reference for AI-backed consumer software
 with clear boundaries. The interesting parts are not "call an LLM":
@@ -31,7 +34,7 @@ and passes API calls to a small Node proxy. The proxy holds the keys, checks
 request signatures, enforces the schema allowlist and logs model telemetry,
 and it calls Google Gemini by default or Anthropic Claude in the quality mode.
 
-## Running it
+## Run it
 
 ```bash
 npm install
@@ -63,4 +66,6 @@ product docs.
   code
 - [ROADMAP.md](ROADMAP.md) - playtest gates and what comes next
 
-MIT licensed.
+## Licence
+
+MIT, see [LICENSE](LICENSE).
