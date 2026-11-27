@@ -17,7 +17,7 @@ Shipped:
 - private secret goals with pass-the-phone reveal
 - AI-narrated parameter consequences and endings
 - Gemini 2.5 Flash default model with Estonian editor pass
-- Claude Sonnet 4.6 hidden quality mode
+- Claude Sonnet 4.6 hidden quality mode (off in production since 2026-11-17: no `ANTHROPIC_API_KEY`, so the proxy answers 503)
 - exact schema hash guard in the proxy
 - headless playtest runner, local started-game transcripts, and transcript export
 
@@ -90,6 +90,9 @@ transcripts show the rule is ineffective or redundant.
 
 ### UX Polish
 
+- The setup screen still offers `claude` while production has the mode off,
+  so every request after picking it fails with 503: hide the option when the
+  proxy has no key, or set the key again.
 - Rework parameter board spacing for small screens.
 - Improve parameter event transitions so state changes feel like story events,
   not score updates.

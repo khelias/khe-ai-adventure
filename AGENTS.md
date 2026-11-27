@@ -259,8 +259,9 @@ From `ROADMAP.md`:
 
 Estonian (`language='et'`) player-facing text (scene, choices, story and
 sequel texts) goes through a second call to `GEMINI_MODEL` with the editorial
-prompt in `proxy/et-style-guide.js` (`estonianEditorPass`,
-`estonianStructuredTextEditorPass`), inside a 25 s budget
+prompt in `proxy/et-style-guide.js`; in `proxy/server.js` `turnEditorTasks`
+and `structuredEditorTasks` build the tasks and `runEditorTasks` runs them,
+inside a 25 s budget
 (`EDITOR_TOTAL_BUDGET_MS`). A failure falls back to the unedited
 text. It runs with thinking off (or at the model's lowest level), is capped at 40
 tasks, is skipped when the global day budget has no room, and its actual

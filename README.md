@@ -23,7 +23,8 @@ with clear boundaries. The interesting parts are not "call an LLM":
 - The engine owns the mechanics: the model narrates, the app applies the
   shared state and scores the secret goals.
 - Cost is a product requirement: a cheap, fast model by default, a stronger
-  one only as an opt-in quality mode.
+  one only as an opt-in quality mode, switched off in production since
+  2026-11-17.
 - Estonian prose gets a separate editor pass, because good local language
   matters more than raw model impressiveness.
 - Prompts, model choice and the API contract are documented as engineering
@@ -32,7 +33,8 @@ with clear boundaries. The interesting parts are not "call an LLM":
 The browser never calls a provider. It talks to nginx, which serves the app
 and passes API calls to a small Node proxy. The proxy holds the keys, checks
 request signatures, enforces the schema allowlist and logs model telemetry,
-and it calls Google Gemini by default or Anthropic Claude in the quality mode.
+and it calls Google Gemini by default or Anthropic Claude in an opt-in quality mode, switched off in production
+since 2026-11-17.
 
 ## Run it
 

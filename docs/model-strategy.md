@@ -37,7 +37,7 @@ Implementation:
 - Client provider default: `gemini`
 - Proxy fallback default: `gemini`
 - Proxy model default: `gemini-2.5-flash`
-- Advanced UI may still expose `claude` as a quality mode.
+- Advanced UI may still expose `claude` as a quality mode (off in production since 2026-11-17: no `ANTHROPIC_API_KEY`, so the proxy answers 503).
 
 ## Gemini capabilities to use carefully
 
@@ -68,7 +68,7 @@ Implementation:
 
 ## Quality mode
 
-Use `claude-sonnet-4-6` only as an opt-in quality mode.
+Use `claude-sonnet-4-6` only as an opt-in quality mode (off in production since 2026-11-17: no `ANTHROPIC_API_KEY`, so the proxy answers 503).
 
 Why not default:
 

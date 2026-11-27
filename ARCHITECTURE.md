@@ -29,7 +29,8 @@ ends.
    its tunnel to the home server.
 3. The home server runs the React SPA and the Node proxy.
 4. The proxy calls the Google Gemini API for the default generation and the
-   Estonian editor, or the Anthropic API in the opt-in quality mode.
+   Estonian editor, or the Anthropic API in an opt-in quality mode, which production has had off
+   since 2026-11-17 (no key set, so it answers 503).
 
 The browser never receives provider API keys and never calls providers directly.
 All AI traffic goes through `adventure-proxy`.

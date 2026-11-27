@@ -21,7 +21,7 @@ adventure proxy. The frontend never calls provider APIs directly.
 - `prompt`: dynamic user message.
 - `schema`: one of the canonical schemas exported from
   `src/game/prompts/schemas.ts`.
-- `provider`: defaults to `gemini`; `claude` is an opt-in quality mode.
+- `provider`: defaults to `gemini`; `claude` is an opt-in quality mode (off in production since 2026-11-17: no `ANTHROPIC_API_KEY`, so the proxy answers 503).
 - `model`: optional override of the provider's configured model, for
   side-by-side playtests. Checked against `MODEL_ALLOWLIST` in
   `proxy/server.js`; anything else is a 400 listing the allowed values. The
