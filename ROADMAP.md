@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-09-25
 
-AI Adventure Engine is a 20-40 minute pass-the-phone adventure game for a small
+AI Adventure is a 20-40 minute pass-the-phone adventure game for a small
 group using one shared device. The next product decisions should come from real
 table play, not from adding more mechanics in isolation.
 

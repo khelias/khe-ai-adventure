@@ -168,39 +168,20 @@ test('starts offline with a notice, and the mock provider still plays', async ({
 })
 
 // The pages share the context's storage, as an installed app on Android shares the browser's.
-test('installed with no language chosen, the game opens in Estonian; a browser tab and a chosen language keep theirs', async ({ page, context }) => {
-  const markInstalled = () => Object.defineProperty(navigator, 'standalone', { value: true })
+test('with no language chosen the game opens in Estonian; a link shows its language without choosing it', async ({ page, context }) => {
   await page.goto('/adventure/')
-  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
-
-  const installed = await context.newPage()
-  await installed.addInitScript(markInstalled)
-  await installed.goto('/adventure/')
-  await expect(installed.locator('html')).toHaveAttribute('lang', 'et')
-  await expect(installed.getByRole('heading', { name: SETUP_HEADING })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'et')
+  await expect(page.getByRole('heading', { name: SETUP_HEADING })).toBeVisible()
 
   const tab = await context.newPage()
-  await tab.goto('/adventure/')
-  await expect(tab.locator('html')).toHaveAttribute('lang', 'en')
-
-  const installedOnAndroid = await context.newPage()
-  await installedOnAndroid.addInitScript(() => {
-    const matchMedia = window.matchMedia.bind(window)
-    window.matchMedia = (query) =>
-      query === '(display-mode: standalone)' ? { ...matchMedia(query), matches: true, media: query } : matchMedia(query)
-  })
-  await installedOnAndroid.goto('/adventure/')
-  await expect(installedOnAndroid.locator('html')).toHaveAttribute('lang', 'et')
-
-  // A link's ?lang shows that page in English but is no choice.
   await tab.goto('/adventure/?lang=en')
   await expect(tab.locator('html')).toHaveAttribute('lang', 'en')
-  await installedOnAndroid.reload()
-  await expect(installedOnAndroid.locator('html')).toHaveAttribute('lang', 'et')
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'et')
 
-  await installed.getByRole('button', { name: 'EN' }).click()
-  await installed.goto('/adventure/')
-  await expect(installed.locator('html')).toHaveAttribute('lang', 'en')
+  await page.getByRole('button', { name: 'EN' }).click()
+  await page.goto('/adventure/')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
 })
 
 test('going back over a language change keeps the chosen language in the address', async ({ page }) => {

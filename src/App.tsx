@@ -3,7 +3,7 @@ import { useGameStore } from './store/gameStore'
 import { SiteFooter } from '@khelias/ui/react'
 import { translations } from './i18n/translations'
 import { hrefWithLanguage, keepUrlLanguage } from './i18n/language'
-import { roomHref } from '@khelias/ui/rooms'
+import { ROOMS, roomHref } from '@khelias/ui/rooms'
 import { exitGame } from './game/actions'
 import { useBackGuard } from './useBackGuard'
 import { useOnline } from './useOnline'
@@ -15,6 +15,8 @@ import { SecretAssignmentScreen } from './components/SecretAssignmentScreen'
 import { GameScreen } from './components/GameScreen'
 import { GameOverScreen } from './components/GameOverScreen'
 import { ExitGameSheet } from './components/ExitGameSheet'
+
+const gamesRoom = ROOMS.find((room) => room.id === 'games')
 
 export default function App() {
   const screen = useGameStore((s) => s.screen)
@@ -34,8 +36,8 @@ export default function App() {
   const privacyHref = hrefWithLanguage('/privacy', language)
 
   useEffect(() => {
-    document.title = strings.appTitle
-  }, [strings.appTitle])
+    document.title = `${strings.appHeaderTitle} | KHE Games`
+  }, [strings.appHeaderTitle])
 
   useEffect(() => {
     const onPopState = () => keepUrlLanguage(language)
@@ -90,6 +92,7 @@ export default function App() {
         label={strings.footerLinksLabel}
         home={{ label: 'KHE.ee', href: roomHref('home', language) }}
         links={[
+          { label: gamesRoom?.name[language] ?? 'KHE Games', href: roomHref('games', language) },
           { label: 'GitHub', href: 'https://github.com/khelias/khe-ai-adventure', icon: 'github' },
           { label: 'LinkedIn', href: 'https://www.linkedin.com/in/kaido-henrik-elias/', icon: 'linkedin' },
           { label: strings.footerPrivacyLink, href: privacyHref },

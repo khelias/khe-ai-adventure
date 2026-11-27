@@ -34,8 +34,8 @@ product docs; infrastructure is in `khe-homelab`.
   `/adventure/api/` stay outside it, and a new worker waits for every window
   to close, so a running game is never reloaded. Offline the app opens with a
   notice (`offlineNotice`); only the Mock provider plays without a network.
-  Installed, it opens in Estonian until a language is chosen; a browser tab
-  keeps English.
+  It opens in Estonian, in a tab and installed, until a language is chosen
+  ([khe-sites ADR-001](https://github.com/khelias/khe-sites/blob/main/docs/decisions/001-khe-ee-pages-are-one-static-page-per-language.md) point 8).
 - Fonts: Familjen Grotesk for the shell, the family's type
   ([khe-sites `DESIGN.md` "Typography"](https://github.com/khelias/khe-sites/blob/main/DESIGN.md#typography),
   `--sans` in `src/index.css`), and Fraunces on the stage only (the game
@@ -53,7 +53,8 @@ product docs; infrastructure is in `khe-homelab`.
   `--khe-header-*` properties on `.site-header` in `src/index.css`. The
   footer is `<SiteFooter>` from the same package
   ([estate ADR-014](https://github.com/khelias/khe-architecture/blob/main/decisions/014-shared-ui-packages.md) point 7):
-  `App.tsx` passes GitHub, LinkedIn and Privacy, then the AI disclosure and
+  `App.tsx` passes the Games room (its name from `@khelias/ui/rooms`), GitHub,
+  LinkedIn and Privacy, then the AI disclosure and
   the hosting line from `src/i18n/translations.ts`; `src/index.css` places
   it and sets its `--khe-footer-*` values from the app's tokens. A header or
   footer release changes every `ui:smoke` baseline that shows it.

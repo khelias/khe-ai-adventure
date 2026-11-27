@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-04-25
 
-AI Adventure Engine is a single-page React app plus a small provider proxy. The
+AI Adventure is a single-page React app plus a small provider proxy. The
 core architectural decision is that the app owns game state and the AI owns
 narration. The model may propose parameter changes and choices, but deterministic
 client code applies state transitions, scores secrets, and decides when a game

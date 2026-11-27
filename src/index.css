@@ -344,15 +344,6 @@ button {
   max-width: 980px;
 }
 
-.setup-eyebrow {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 1rem;
-}
-
 .setup-progress {
   display: flex;
   gap: 0.4rem;
@@ -1197,10 +1188,11 @@ button {
   text-align: center;
 }
 
+/* In the setup's bottom padding, not fixed to the viewport, so it never covers the footer. */
 .model-corner {
-  position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -2806,10 +2798,6 @@ button {
   .setup-wrap {
     padding: 0.45rem 0 4.75rem;
   }
-  .setup-eyebrow {
-    margin-bottom: 0.6rem;
-    letter-spacing: 0.24em;
-  }
   .setup-progress {
     margin-bottom: 0.45rem;
   }
@@ -3037,8 +3025,8 @@ button {
     padding-bottom: 1.5rem;
   }
   .model-corner {
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    right: 0.75rem;
+    bottom: 0.75rem;
   }
   .model-corner__toggle {
     width: 2.75rem;

@@ -3,7 +3,7 @@
 [![CI](https://github.com/khelias/khe-ai-adventure/actions/workflows/ci.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/khelias/khe-ai-adventure/actions/workflows/codeql.yml/badge.svg)](https://github.com/khelias/khe-ai-adventure/actions/workflows/codeql.yml)
 
-**AI Adventure Engine**: a party adventure game for 3-6 adult players around
+**AI Adventure** (AI Seiklus): a party adventure game for 3-6 adult players around
 one phone, in Estonian and English. Live at
 [games.khe.ee/adventure](https://games.khe.ee/adventure/).
 

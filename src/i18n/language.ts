@@ -1,6 +1,7 @@
 import type { Language } from '../game/types'
 
-export const DEFAULT_LANGUAGE: Language = 'en'
+// Estonian first, in a tab and installed alike (khe-sites ADR-001 point 8).
+export const DEFAULT_LANGUAGE: Language = 'et'
 export const LANGUAGE_STORAGE_KEY = 'app_locale'
 export const LANGUAGE_QUERY_PARAM = 'lang'
 
@@ -45,19 +46,11 @@ export function persistLanguagePreference(language: Language): void {
   syncDocumentLanguage(language)
 }
 
-// The home-screen name is Estonian, and iOS starts an installed app with storage of its own.
-function isInstalledApp(): boolean {
-  if (typeof window === 'undefined') return false
-  const standalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
-  return standalone || window.matchMedia('(display-mode: standalone)').matches
-}
-
 // Only a press on the switcher is stored: app_locale is shared across games.khe.ee, where an
 // installed app on Android shares the browser's storage, and every room link and the launcher's
 // links carry a ?lang, chosen or not.
 export function loadInitialLanguage(): Language {
-  const language =
-    readUrlLanguage() ?? readStoredLanguage() ?? (isInstalledApp() ? 'et' : DEFAULT_LANGUAGE)
+  const language = readUrlLanguage() ?? readStoredLanguage() ?? DEFAULT_LANGUAGE
   syncDocumentLanguage(language)
   return language
 }

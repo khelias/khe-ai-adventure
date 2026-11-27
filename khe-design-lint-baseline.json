@@ -1,5 +1,5 @@
 {
-  "version": "0.10.0",
+  "version": "0.11.0",
   "files": {
     "src/components/GameOverScreen.tsx": {
       "dash": 1,
@@ -10,12 +10,12 @@
     },
     "src/index.css": {
       "blur": 3,
-      "caps": 36,
+      "caps": 35,
       "gradient": 31,
       "palette": 9,
       "radius": 1,
       "shadow": 31,
-      "tracking": 50
+      "tracking": 48
     }
   }
 }

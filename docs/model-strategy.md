@@ -1,4 +1,4 @@
-# AI Adventure Engine model strategy
+# AI Adventure model strategy
 
 Last reviewed: 2026-10-02
 

@@ -1,7 +1,6 @@
 import type { Language } from '../game/types'
 
 interface StringTable {
-  appTitle: string
   appHeaderTitle: string
   kheHomeAria: string
   languageToggleLabel: string
@@ -17,7 +16,6 @@ interface StringTable {
   playerCountLabel: string
   playerCountQuestion: string
   durationQuestion: string
-  adventureKicker: string
   castKicker: string
   yourAdventureKicker: string
   storyToldKicker: string
@@ -50,13 +48,8 @@ interface StringTable {
   setupReviewHeader: string
   setupReviewNoLocation: string
   setupContextNote: string
-  playerNamesHeader: string
-  playerNamesHint: string
   playerNamesNote: string
-  groupSectionHeader: string
   groupSectionHint: string
-  locationNote: string
-  ideaSectionHeader: string
   ideaSectionHint: string
   locationLabel: string
   locationPlaceholder: string
@@ -183,7 +176,6 @@ interface StringTable {
 
 export const translations: Record<Language, StringTable> = {
   et: {
-    appTitle: 'AI Seiklusmootor',
     appHeaderTitle: 'AI Seiklus',
     kheHomeAria: 'KHE.ee avaleht',
     languageToggleLabel: 'Keel',
@@ -191,7 +183,7 @@ export const translations: Record<Language, StringTable> = {
     languageEnglish: 'English',
     footerLinksLabel: 'Lehe lingid',
     footerPrivacyLink: 'Privaatsus',
-    footerHosting: 'Ise majutatud Eestis',
+    footerHosting: 'Töötab koduserveris Eestis',
     footerAiDisclosure: '18+ · Lugu kirjutab tehisintellekt',
     adultsConfirmLabel: 'Kinnitan, et kõik mängijad on vähemalt 18-aastased',
     aiInputHint: 'Siia kirjutatu saadetakse loo loomiseks tehisintellekti teenusepakkujale. Kirjuta ainult seda, millega kõik laua ääres nõus on.',
@@ -199,7 +191,6 @@ export const translations: Record<Language, StringTable> = {
     playerCountLabel: 'Mängijate arv:',
     playerCountQuestion: 'Mängijate arv',
     durationQuestion: 'Mängu kestus',
-    adventureKicker: 'mängu algus',
     castKicker: 'rollid',
     yourAdventureKicker: 'teie seiklus',
     storyToldKicker: 'lugu on räägitud',
@@ -228,7 +219,7 @@ export const translations: Record<Language, StringTable> = {
     hideGenreListBtn: 'Peida žanrite nimekiri',
     genrePosition: (current, total) => `${current} / ${total}`,
     genreTeaser: (genre) => ({
-      Zombies: 'Ellujäämine, surve ja otsused, mis lähevad kiiresti isiklikuks.',
+      Zombies: 'Ellujäämine, pinge ja valikud, mis puudutavad igaüht.',
       Fantasy: 'Võõrad jõud, vandetõotused ja valikud, mille hind kasvab.',
       'Sci-Fi': 'Katkised süsteemid, võimatud signaalid ja meeskond piiri peal.',
       Thriller: 'Vaiksed ohud, napp info ja tunne, et keegi varjab midagi.',
@@ -236,25 +227,20 @@ export const translations: Record<Language, StringTable> = {
       'Post-Apocalyptic': 'Ressursid on otsas, usaldus on habras ja iga valik maksab.',
     }[genre] ?? 'Vali seikluse toon.'),
     durationTeaser: (duration) => ({
-      Short: 'Kiire mäng: surve jõuab lauale peaaegu kohe.',
+      Short: 'Kiire mäng: pinge algab kohe.',
       Medium: 'Tasakaalus mäng: ruumi avastamiseks ja korralikuks pöördeks.',
       Long: 'Pikem mäng: rohkem pinget ja rohkem ruumi saladustele.',
     }[duration] ?? 'Vali tempo, mis sobib tänasele õhtule.'),
     setupReviewHeader: 'Mängu ülevaade',
     setupReviewNoLocation: 'Koht lisamata',
     setupContextNote: 'Vabatahtlik. Kui midagi head ei tule pähe, alusta ilma selleta.',
-    playerNamesHeader: 'Seltskond',
-    playerNamesHint: 'Vali mängijate arv ja lisa soovi korral nimed või lühike kirjeldus seltskonnast.',
-    playerNamesNote: 'Mängijate arv mõjutab rolle ja saladusi. Nimed on soovituslikud.',
-    groupSectionHeader: 'Koht ja toon',
-    groupSectionHint: 'Alusta sellest, kus te praegu olete. Siis on kohe huvitav näha, kuidas tuttav koht seikluseks muutub.',
-    locationNote: 'Koht on kõige kasulikum kontekst. Meeleolu võib vabalt jääda üllatuseks.',
-    ideaSectionHeader: 'Üks detail, mitte juhend',
+    playerNamesNote: 'Mängijate arv mõjutab rolle ja saladusi. Nimesid ei pea lisama.',
+    groupSectionHint: 'Tuttavast kohast saab seiklus.',
     ideaSectionHint: 'Lisa ainult üks asi, mida oleks põnev seikluses näha. See võib olla tänane nali, ese laual või väike ebamugav olukord.',
     locationLabel: 'Kus te praegu olete?',
-    locationPlaceholder: 'nt köögilaua ääres, kontori köögis, bussipeatuses...',
+    locationPlaceholder: 'nt köögilaua ääres',
     playersDescLabel: 'Kes kaasa löövad?',
-    playersDescPlaceholder: 'nt Mart, Mari ja Jaan või kogu sünnipäevaseltskond',
+    playersDescPlaceholder: 'nt Mart, Mari ja Jaan',
     vibeLabel: 'Meeleolu',
     vibeAny: 'Mis tuleb, see tuleb',
     vibeLight: 'Kerge & naljakas',
@@ -394,7 +380,6 @@ export const translations: Record<Language, StringTable> = {
     ],
   },
   en: {
-    appTitle: 'AI Adventure Engine',
     appHeaderTitle: 'AI Adventure',
     kheHomeAria: 'KHE.ee home',
     languageToggleLabel: 'Language',
@@ -402,7 +387,7 @@ export const translations: Record<Language, StringTable> = {
     languageEnglish: 'English',
     footerLinksLabel: 'Page links',
     footerPrivacyLink: 'Privacy',
-    footerHosting: 'Self-hosted in Estonia',
+    footerHosting: 'Runs on a home server in Estonia',
     footerAiDisclosure: '18+ · The story is written by AI',
     adultsConfirmLabel: 'I confirm that all players are 18 or older',
     aiInputHint: 'What you type here is sent to the AI provider to write the story. Enter only what everyone at the table is fine with.',
@@ -410,7 +395,6 @@ export const translations: Record<Language, StringTable> = {
     playerCountLabel: 'Number of players',
     playerCountQuestion: 'Number of players',
     durationQuestion: 'Game length',
-    adventureKicker: 'game setup',
     castKicker: 'cast',
     yourAdventureKicker: 'your adventure',
     storyToldKicker: 'the story is told',
@@ -439,7 +423,7 @@ export const translations: Record<Language, StringTable> = {
     hideGenreListBtn: 'Hide genre list',
     genrePosition: (current, total) => `${current} / ${total}`,
     genreTeaser: (genre) => ({
-      Zombies: 'Survival, pressure, and decisions that get personal fast.',
+      Zombies: 'Survival, tension, and choices that touch everyone.',
       Fantasy: 'Strange powers, oaths, and choices whose price keeps rising.',
       'Sci-Fi': 'Broken systems, impossible signals, and a crew on the edge.',
       Thriller: 'Quiet threats, partial information, and the sense that someone is hiding something.',
@@ -447,25 +431,20 @@ export const translations: Record<Language, StringTable> = {
       'Post-Apocalyptic': 'Resources are gone, trust is fragile, and every choice costs something.',
     }[genre] ?? 'Choose the tone the adventure should gather around.'),
     durationTeaser: (duration) => ({
-      Short: 'Fast game: pressure reaches the table almost immediately.',
+      Short: 'Fast game: the tension starts right away.',
       Medium: 'Balanced game: room to explore and still land a proper twist.',
       Long: 'Longer game: more escalation and more space for secrets.',
     }[duration] ?? 'Choose the pace that fits tonight.'),
     setupReviewHeader: 'Game overview',
     setupReviewNoLocation: 'No place added',
     setupContextNote: 'This field is optional. If nothing good comes to mind, start without it.',
-    playerNamesHeader: 'The group',
-    playerNamesHint: 'Choose the number of players and optionally add names or a short description of the group.',
     playerNamesNote: 'Player count affects roles and secrets. Names are optional.',
-    groupSectionHeader: 'Place and tone',
-    groupSectionHint: 'Start with where you are right now. It is more interesting when a familiar place turns into the adventure.',
-    locationNote: 'Place is the most useful context. Mood can stay open if you want to be surprised.',
-    ideaSectionHeader: 'One detail, not a brief',
+    groupSectionHint: 'A familiar place becomes the adventure.',
     ideaSectionHint: 'Add one thing that would be fun to see in the adventure: an in-joke, an object on the table, or a small awkward situation.',
     locationLabel: 'Where are you right now?',
-    locationPlaceholder: 'e.g. around the kitchen table, office kitchen, bus stop...',
+    locationPlaceholder: 'e.g. at the kitchen table',
     playersDescLabel: 'Who is joining?',
-    playersDescPlaceholder: 'e.g. Alex, Sarah, and John, or the whole birthday table',
+    playersDescPlaceholder: 'e.g. Alex, Sarah, and John',
     vibeLabel: 'Mood',
     vibeAny: 'Whatever happens, happens',
     vibeLight: 'Light & humorous',

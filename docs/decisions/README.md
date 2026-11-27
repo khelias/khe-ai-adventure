@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-These ADRs capture decisions that define the shape of AI Adventure Engine.
+These ADRs capture decisions that define the shape of AI Adventure.
 They are intentionally short: enough context to understand the tradeoff, enough
 consequences to know what future changes must respect.
 

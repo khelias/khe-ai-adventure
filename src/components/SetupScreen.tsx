@@ -155,7 +155,6 @@ export function SetupScreen() {
 
   return (
     <section className="setup-wrap">
-      <span className="setup-eyebrow">{strings.adventureKicker}</span>
       <div className="setup-progress" aria-label={strings.setupStepLabel(step, SETUP_STEPS.length)}>
         {SETUP_STEPS.map((n) => (
           <span key={n} className={step === n ? 'active' : ''} />
@@ -299,11 +298,6 @@ export function SetupScreen() {
       {step === 2 && (
         <div className="setup-step-content setup-step-content--context fade-in">
           <div className="context-form-card">
-            <div>
-              <h3 className="setup-tell-header">{strings.playerNamesHeader}</h3>
-              <p className="setup-context-hint">{strings.playerNamesHint}</p>
-            </div>
-
             <div className="setup-section setup-section--inline">
               <span className="setup-label">{strings.playerCountQuestion}</span>
               <div className="seg-group">
@@ -359,10 +353,7 @@ export function SetupScreen() {
       {step === 3 && (
         <div className="setup-step-content setup-step-content--context fade-in">
           <div className="context-form-card">
-            <div>
-              <h3 className="setup-tell-header">{strings.groupSectionHeader}</h3>
-              <p className="setup-context-hint">{strings.groupSectionHint}</p>
-            </div>
+            <p className="setup-context-hint">{strings.groupSectionHint}</p>
 
             <div className="ctx-field ctx-field--primary">
               <span className="ctx-label">{strings.locationLabel}</span>
@@ -399,8 +390,6 @@ export function SetupScreen() {
               </div>
             </div>
           </div>
-
-          <p className="setup-context-note">{strings.locationNote}</p>
 
           <div className="setup-nav-row">
             <button
@@ -446,10 +435,7 @@ export function SetupScreen() {
           </div>
 
           <div className="context-form-card">
-            <div>
-              <h3 className="setup-tell-header">{strings.ideaSectionHeader}</h3>
-              <p className="setup-context-hint">{strings.ideaSectionHint}</p>
-            </div>
+            <p className="setup-context-hint">{strings.ideaSectionHint}</p>
 
             <div className="ctx-field ctx-field--primary">
               <span className="ctx-label">{strings.insideJokeLabel}</span>
